@@ -13,6 +13,10 @@
     }
 </script>
 
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-analytics-compat.js"></script>
+
 <style>
 /* ==========================================================================
    1. ROOT VARIABLES & CORE STYLES
@@ -53,14 +57,28 @@ button { font-family: inherit; outline: none; border: none; cursor: pointer; use
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background-color: var(--accent); }
 
-/* Lock Screen Bypass via CSS */
-html.system-unlocked #passwordScreen { display: none !important; }
+/* TRUE SYSTEM LOCK */
+html:not(.system-unlocked) header,
+html:not(.system-unlocked) main,
+html:not(.system-unlocked) .hotbar-container,
+html:not(.system-unlocked) .fab {
+    filter: blur(16px) brightness(0.4);
+    pointer-events: none;
+    user-select: none;
+    transition: filter 0.8s ease;
+}
+
+html.system-unlocked #passwordScreen { 
+    opacity: 0; 
+    pointer-events: none; 
+    visibility: hidden; 
+    transition: opacity 0.5s ease, visibility 0.5s; 
+}
 
 /* ==========================================================================
-   2. DYNAMIC BACKGROUND PARALLAX (PERFORMANCE OPTIMIZED)
+   2. DYNAMIC BACKGROUND PARALLAX
    ========================================================================== */
 .bg-animation { position: fixed; inset: 0; z-index: -1; overflow: hidden; opacity: 0.55; transition: transform 0.1s linear; pointer-events: none; will-change: transform; }
-/* PERFORMANCE FIX: Removed filter: blur(). Replaced with radial gradients. Saves massive GPU power. */
 .orb { position: absolute; border-radius: 50%; opacity: 0.45; mix-blend-mode: screen; will-change: transform; }
 .orb-1 { width: 60vw; height: 60vw; background: radial-gradient(circle closest-side, rgba(99, 102, 241, 0.8), transparent); top: -25%; left: -15%; animation: float 40s infinite ease-in-out; }
 .orb-2 { width: 50vw; height: 50vw; background: radial-gradient(circle closest-side, rgba(236, 72, 153, 0.6), transparent); bottom: -25%; right: -15%; animation: float 35s infinite ease-in-out reverse; }
@@ -73,12 +91,12 @@ html.system-unlocked #passwordScreen { display: none !important; }
 .ripple-target { position: relative; overflow: hidden; cursor: pointer; }
 .ripple-effect { position: absolute; border-radius: 50%; transform: scale(0); animation: rippleAnim 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94); background: rgba(255, 255, 255, 0.2); pointer-events: none; z-index: 10; }
 @keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
 
 /* ==========================================================================
    4. HEADER
    ========================================================================== */
 header { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%); background: rgba(10, 14, 23, 0.75); border-bottom: 1px solid var(--border); box-shadow: 0 4px 30px rgba(0,0,0,0.4); padding: 12px 24px; transition: transform 0.5s var(--transition-smooth); }
-
 .header-content { max-width: 1600px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px; }
 
 .logo-container { display: flex; align-items: center; gap: 16px; justify-self: flex-start; padding: 6px 12px; border-radius: 16px; transition: var(--transition-fast); }
@@ -93,7 +111,6 @@ header { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(16px) sat
 .net-online { color: var(--success); transition: color var(--transition-smooth); }
 .net-offline { color: var(--danger); transition: color var(--transition-smooth); }
 .divider { width: 1px; height: 20px; background: var(--border-highlight); }
-
 .datetime-display { display: flex; align-items: center; gap: 10px; }
 .datetime-display .time { font-family: "JetBrains Mono", monospace; font-size: 16px; font-weight: 800; color: var(--accent); text-shadow: 0 2px 8px var(--accent-glow); }
 .datetime-display .date { font-size: 13px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -225,6 +242,7 @@ header { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(16px) sat
 .pomo-mode-btn { padding: 10px 12px; border-radius: 10px; border: none; background: transparent; color: var(--muted); font-weight: 800; transition: all var(--transition-smooth); font-size: 13px; flex-grow: 1; text-align: center; }
 .pomo-mode-btn.active { background: var(--card-hover); color: var(--text); box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: 1px solid var(--border-highlight); }
 
+/* ORIGINAL NOTES SECTION */
 .notes-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
 .notes-tabs { display: flex; gap: 8px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 14px; border: 1px solid var(--border); box-shadow: var(--shadow-inner); transition: border-color var(--transition-smooth); }
 .note-tab { padding: 10px 24px; border-radius: 10px; font-size: 14px; font-weight: 800; transition: all var(--transition-smooth); color: var(--muted); background: transparent; border: 1px solid transparent; }
@@ -249,7 +267,7 @@ header { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(16px) sat
 .hotbar-slot.drag-over { background: rgba(255,255,255,0.05); outline: 2px solid var(--success); outline-offset: 4px; transform: scale(1.03); }
 
 /* ==========================================================================
-   9. CONTEXT MENUS, MODALS & TOASTS (LAPTOP SIZED MODAL)
+   9. CONTEXT MENUS, MODALS & TOASTS
    ========================================================================== */
 .context-menu { position: fixed; background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--border-highlight); border-radius: 14px; box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1); padding: 10px; min-width: 240px; z-index: 9999; display: none; opacity: 0; transform: scale(0.98); transform-origin: top left; transition: opacity 0.2s ease, transform 0.2s var(--transition-smooth); }
 .context-menu.active { display: block; opacity: 1; transform: scale(1); }
@@ -260,47 +278,38 @@ header { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(16px) sat
 
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 2000; align-items: center; justify-content: center; animation: fadeIn 0.4s ease; padding: 20px; }
 .modal-overlay.active { display: flex; }
-/* PERFORMANCE / LAPTOP FIX: Adjusted width/padding/max-height for smaller screens */
 .modal { width: 100%; max-width: 650px; background: var(--card); border: 1px solid var(--border-highlight); border-radius: 24px; padding: 32px; box-shadow: 0 40px 100px rgba(0,0,0,0.7), inset 0 2px 10px rgba(255,255,255,0.05); animation: scaleIn 0.5s var(--transition-smooth); max-height: 85vh; overflow-y: auto; backdrop-filter: blur(16px); }
 .modal h3 { font-size: 28px; margin-bottom: 24px; font-weight: 900; text-align: center; letter-spacing: -1px; }
 .modal-input { width: 100%; padding: 16px 20px; border-radius: 16px; border: 2px solid var(--border); background: rgba(0,0,0,0.3); color: var(--text); font-size: 16px; font-weight: 600; margin-bottom: 16px; transition: all var(--transition-fast); font-family: inherit; box-shadow: var(--shadow-inner); }
 .modal-input:focus { outline: none; border-color: var(--accent); box-shadow: var(--shadow-inner), 0 0 0 3px var(--accent-glow); background: rgba(0,0,0,0.5); }
-
 .modal-actions { display: flex; gap: 16px; justify-content: center; margin-top: 24px; }
 .modal-btn { padding: 14px 28px; border-radius: 14px; border: none; font-weight: 800; cursor: pointer; transition: all var(--transition-fast); width: 100%; font-size: 15px; box-shadow: var(--shadow-inner), 0 4px 12px rgba(0,0,0,0.1); }
 .modal-btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white; border: 1px solid rgba(255,255,255,0.2); text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
 .modal-btn.primary:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 10px 24px var(--accent-glow); }
 .modal-btn.secondary { background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border-highlight); }
 .modal-btn.secondary:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
-.modal-btn.danger { background: var(--danger); color: white; border: 1px solid rgba(255,255,255,0.2); }
 
 /* ==========================================================================
-   10. THEME INSPECTOR V2 (UPGRADED UI GRID)
+   10. THEME INSPECTOR V2
    ========================================================================== */
 .theme-inspector-v2 { display: flex; flex-direction: column; gap: 24px; text-align: left; }
 .ti-preview-card { width: 100%; height: 120px; border-radius: 16px; border: 1px solid var(--border-highlight); background: var(--app-bg); transition: background 0.6s var(--transition-smooth); box-shadow: inset 0 20px 50px rgba(0,0,0,0.5), 0 10px 30px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
 .ti-preview-text { font-size: 14px; font-weight: 800; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 2px; font-family: "JetBrains Mono", monospace; mix-blend-mode: overlay; pointer-events: none; }
-
 .ti-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
 @media (max-width: 768px) { .ti-grid { grid-template-columns: 1fr; } }
-
 .ti-section { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: var(--shadow-inner); display: flex; flex-direction: column; gap: 16px; }
 .ti-heading { font-size: 15px; font-weight: 800; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 4px; letter-spacing: -0.5px; }
 .ti-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-
 .ti-select { width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--card-hover); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; transition: var(--transition-fast); box-shadow: var(--shadow-inner); outline: none; appearance: none; }
 .ti-select:focus, .ti-select:hover { border-color: var(--accent); background: rgba(255,255,255,0.05); }
-
 .ti-color-pickers { display: flex; gap: 16px; width: 100%; }
 .ti-picker-group { flex: 1; display: flex; flex-direction: column; gap: 8px; transition: opacity 0.3s, transform 0.3s; }
 .ti-picker-group.hidden { opacity: 0; pointer-events: none; position: absolute; visibility: hidden; }
 .ti-picker-group span { font-size: 12px; font-weight: 700; color: var(--muted); text-align: center; }
-
 .ti-color-input { -webkit-appearance: none; -moz-appearance: none; appearance: none; width: 100%; height: 44px; background: transparent; border: none; cursor: pointer; border-radius: 10px; }
 .ti-color-input::-webkit-color-swatch-wrapper { padding: 0; }
 .ti-color-input::-webkit-color-swatch { border: 2px solid var(--border-highlight); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: transform var(--transition-fast), border-color var(--transition-fast); }
 .ti-color-input:hover::-webkit-color-swatch { transform: scale(1.05); border-color: #fff; }
-
 .ti-presets-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .ti-preset { height: 44px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); transition: all var(--transition-smooth); box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: white; text-shadow: 0 2px 6px rgba(0,0,0,0.9); cursor: pointer; position: relative; overflow: hidden; }
 .ti-preset::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 2px transparent; border-radius: 10px; transition: var(--transition-fast); pointer-events: none; }
@@ -313,17 +322,50 @@ header { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(16px) sat
 .toast-icon { font-size: 28px; }
 .toast-message { font-weight: 700; font-size: 16px; letter-spacing: 0.5px; }
 
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes popIn { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
 
 .fab { position: fixed; bottom: 32px; right: 32px; z-index: 90; display: flex; flex-direction: column; gap: 12px; align-items: flex-end; }
 .fab-main { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: white; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 8px 32px var(--accent-glow); border: 1px solid rgba(255,255,255,0.2); transition: all var(--transition-smooth); font-weight: 900; cursor: pointer; }
 .fab-main:hover { transform: translateY(-4px) scale(1.02); }
+
+/* Password Screen */
+.password-screen { position: fixed; inset: 0; z-index: 9999; display: flex; justify-content: center; align-items: center; }
+.password-box { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--border-highlight); border-radius: 24px; padding: 48px; box-shadow: 0 40px 100px rgba(0,0,0,0.8); text-align: center; }
+
+/* ==========================================================================
+   11. TYPING DOJO OVERLAY (DUAL MODE + HIGH SCORES)
+   ========================================================================== */
+#typingDojoOverlay { position: fixed; inset: 0; background: var(--bg); z-index: 9000; display: none; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.5s ease; padding: 40px; }
+#typingDojoOverlay.active { display: flex; opacity: 1; }
+.dojo-header { position: absolute; top: 40px; width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; }
+.dojo-title { font-size: 24px; font-weight: 900; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
+.dojo-close { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+
+.dojo-mode-select { margin-bottom: 32px; display: flex; gap: 8px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 16px; border: 1px solid var(--border); }
+.dojo-mode-btn { padding: 10px 20px; border-radius: 10px; border: none; background: transparent; color: var(--muted); font-weight: 800; transition: all var(--transition-smooth); font-size: 14px; cursor: pointer; }
+.dojo-mode-btn.active { background: var(--card-hover); color: var(--text); box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: 1px solid var(--border-highlight); }
+
+.dojo-stats { display: flex; gap: 32px; margin-bottom: 40px; }
+.dojo-stat-box { background: rgba(255,255,255,0.05); border: 1px solid var(--border-highlight); padding: 16px 32px; border-radius: 16px; text-align: center; min-width: 140px; }
+.dojo-stat-val { font-size: 48px; font-weight: 900; font-family: "JetBrains Mono", monospace; color: var(--text); }
+.dojo-stat-lbl { font-size: 12px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+
+.dojo-text-container { font-family: "JetBrains Mono", monospace; font-size: 28px; line-height: 1.6; max-width: 900px; color: var(--muted); position: relative; text-align: left; }
+.dojo-char { transition: color 0.1s; }
+.dojo-char.correct { color: var(--success); text-shadow: 0 0 8px rgba(16,185,129,0.4); }
+.dojo-char.incorrect { color: var(--danger); background: rgba(239,68,68,0.2); border-radius: 4px; }
+.dojo-char.active-char { border-bottom: 4px solid var(--accent); color: var(--text); animation: blinkCursor 1s infinite; }
+@keyframes blinkCursor { 0%, 100% { border-color: var(--accent); } 50% { border-color: transparent; } }
+
+.dojo-blur-hint { position: absolute; inset: 0; background: rgba(10,14,23,0.8); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: var(--accent); cursor: pointer; border-radius: 16px; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 10; }
+.dojo-text-container:not(:focus-within) .dojo-blur-hint { opacity: 1; pointer-events: all; }
+
+/* Fully un-blockable hidden textarea */
+#dojoHiddenInput { position: absolute; top: -9999px; left: -9999px; opacity: 0; width: 10px; height: 10px; border: none; padding: 0; }
 </style>
 </head>
 <body>
@@ -352,8 +394,7 @@ header { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(16px) sat
         <p style="color:var(--muted); margin-bottom: 32px; font-weight: 600;">System locked. Authentication required.</p>
         <input type="password" id="passwordInput" class="modal-input" placeholder="Enter password" style="text-align:center; font-size:20px; letter-spacing: 6px; font-family: 'JetBrains Mono', monospace;">
         <div style="display:flex;gap:16px;margin-top:32px;">
-            <button class="modal-btn secondary ripple-target" id="previewBtn">Preview</button>
-            <button class="modal-btn primary ripple-target" id="unlockBtn">Unlock</button>
+            <button class="modal-btn primary ripple-target" id="unlockBtn" style="width: 100%">Unlock System</button>
         </div>
     </div>
 </div>
@@ -377,8 +418,10 @@ header { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(16px) sat
         </div>
 
         <div class="header-right">
+            <button class="icon-btn ripple-target" id="dojoBtn" title="Typing Dojo (Alt+T)">🥋</button>
             <button class="icon-btn ripple-target" id="themeBtn" title="Appearance Inspector">🎨</button>
             <button class="icon-btn ripple-target" id="shortcutsBtn" title="Shortcuts">⌨️</button>
+            <button class="icon-btn ripple-target" id="lockBtn" title="Lock System" style="border-color: rgba(239, 68, 68, 0.4); color: var(--danger);">🔒</button>
         </div>
     </div>
 </header>
@@ -390,7 +433,7 @@ header { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(16px) sat
     </div>
     
     <div class="search-container">
-        <input type="text" class="search-bar" id="searchBar" placeholder="Search your links, tags, or projects...">
+        <input type="text" class="search-bar" id="searchBar" placeholder="Search your links, tags, or search the web...">
         <span class="search-shortcut">Ctrl+K</span>
         <span class="search-icon">🔍</span>
         <div class="suggestions" id="suggestions"></div>
@@ -399,7 +442,7 @@ header { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(16px) sat
     <div class="quick-actions">
         <button class="action-btn primary ripple-target" id="addLinkBtn">➕ Add Link</button>
         <button class="action-btn ripple-target" id="exportBtn">📤 Export Data</button>
-        <button class="action-btn ripple-target" id="importBtn">📥 Import Data</button>
+        <button class="action-btn ripple-target" id="importBtn">📥 Import / Backup Data</button>
         <button class="action-btn ripple-target" id="undoBtn" style="display:none; border-color:var(--warning); color:var(--warning);">↩️ Undo Action</button>
     </div>
 
@@ -481,17 +524,71 @@ header { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(16px) sat
     <button class="fab-main ripple-target" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 </div>
 
+<div id="typingDojoOverlay">
+    <div class="dojo-header">
+        <div class="dojo-title">🥋 Typing Dojo</div>
+        <button class="dojo-close ripple-target" onclick="closeDojo()">Exit (Esc)</button>
+    </div>
+    
+    <div class="dojo-mode-select">
+        <button class="dojo-mode-btn active ripple-target" data-mode="code">Code Mode</button>
+        <button class="dojo-mode-btn ripple-target" data-mode="prose">Prose Mode</button>
+    </div>
+
+    <div class="dojo-stats">
+        <div class="dojo-stat-box">
+            <div class="dojo-stat-val" id="dojoWpm">0</div>
+            <div class="dojo-stat-lbl">WPM</div>
+        </div>
+        <div class="dojo-stat-box">
+            <div class="dojo-stat-val" id="dojoAcc">100%</div>
+            <div class="dojo-stat-lbl">Accuracy</div>
+        </div>
+        <div class="dojo-stat-box" style="border-color: var(--accent);">
+            <div class="dojo-stat-val" id="dojoHighscore" style="color: var(--accent);">0</div>
+            <div class="dojo-stat-lbl">High Score</div>
+        </div>
+    </div>
+
+    <div class="dojo-text-container" id="dojoTextContainer" tabindex="0">
+        <div class="dojo-blur-hint" onclick="document.getElementById('dojoHiddenInput').focus()">Click here or press Enter to focus</div>
+        <div id="dojoTextRender"></div>
+        <textarea id="dojoHiddenInput" autocomplete="off"></textarea>
+    </div>
+    
+    <button class="action-btn ripple-target" style="margin-top: 40px;" onclick="resetDojo()">🔄 Next Snippet (Tab)</button>
+</div>
+
 <div class="modal-overlay" id="modalOverlay"><div class="modal" id="modal"></div></div>
 <div class="toast" id="toast"><span style="font-size: 24px;">✨</span><span class="toast-message" id="toastMessage">Action completed!</span></div>
 
 <script>
 /**
- * DBP COMMAND CENTER - THE ULTIMATE BUILD
- * Advanced JS Rendering, Category Management, Canvas-grade Animation, Cycle Logic
+ * DBP COMMAND CENTER
+ * Fix: Live Cloud Sync Dashboard & Tracking
  */
 
+// --- FIREBASE INITIALIZATION ---
+const firebaseConfig = {
+  apiKey: "AIzaSyDM9rqfe5IsMbuAgFvie24tC5frVV8TMzk",
+  authDomain: "dbp-homepage.firebaseapp.com",
+  projectId: "dbp-homepage",
+  storageBucket: "dbp-homepage.firebasestorage.app",
+  messagingSenderId: "727679700937",
+  appId: "1:727679700937:web:73865457f008fa479a2218",
+  measurementId: "G-XW9NDCZW30"
+};
+const fbApp = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const analytics = firebase.analytics(); // Analytics successfully injected
+
+// ENABLE NATIVE FIREBASE OFFLINE PERSISTENCE
+db.enablePersistence().catch(function(err) {
+    console.warn("Firebase Persistence Error:", err.code);
+});
+
 const DEFAULT_PASS = localStorage.getItem('dbp_password') || 'dbp123';
-const KEYS = { unlock:'dbp_unlocked', notes:'dbp_notes_v2', links:'dbp_links_data', backup:'dbp_links_backup', sessions:'dbp_pomo_sessions', hotbar:'dbp_hotbar_data', theme:'dbp_theme_v7', timerSettings:'dbp_timer_cfg' };
+const KEYS = { unlock:'dbp_unlocked', notes:'dbp_notes_v2', links:'dbp_links_data', backup:'dbp_links_backup', sessions:'dbp_pomo_sessions', hotbar:'dbp_hotbar_data', theme:'dbp_theme_v7', timerSettings:'dbp_timer_cfg', highscores:'dbp_dojo_highscores' };
 
 const defaultLinks = {
     development: [
@@ -501,10 +598,6 @@ const defaultLinks = {
     study: [
         {id:'ip', icon:'📚', label:'Class 12 IP', url:'https://cbseacademic.nic.in', tags:['CBSE']},
         {id:'physics', icon:'⚛️', label:'Physics Simulator', url:'https://olab.edu.in', tags:['School']}
-    ],
-    ai_tools: [
-        {id:'chatgpt', icon:'🤖', label:'ChatGPT', url:'https://chat.openai.com', tags:['AI', 'Helper']},
-        {id:'gemini', icon:'🧠', label:'Gemini', url:'https://gemini.google.com', tags:['AI', 'Google']}
     ]
 };
 
@@ -512,6 +605,7 @@ const defaultLinks = {
 let links = JSON.parse(localStorage.getItem(KEYS.links)) || defaultLinks;
 let hotbar = JSON.parse(localStorage.getItem(KEYS.hotbar)) || Array(9).fill(null);
 let notesData = JSON.parse(localStorage.getItem(KEYS.notes)) || { main: '', work: '', ideas: '' };
+let dojoHighscores = JSON.parse(localStorage.getItem(KEYS.highscores)) || { code: 0, prose: 0 };
 let currentNoteTab = 'main';
 
 let contextMenuTarget = null; 
@@ -531,14 +625,32 @@ function init() {
     
     updateClock(); 
     setInterval(updateClock, 1000);
-    
-    if(localStorage.getItem(KEYS.unlock) === 'true') {
-        const ps = document.getElementById('passwordScreen');
-        if(ps) ps.style.display = 'none';
-        setTimeout(() => {
-            const sb = document.getElementById('searchBar');
-            if(sb) sb.focus();
-        }, 100);
+}
+
+// --- 0. BACKUP ENGINE ---
+window.triggerBackup = async function(reason = "Auto-backup") {
+    const snapshotData = { links, notesData, hotbar, timerSettings, theme: localStorage.getItem(KEYS.theme), highscores: dojoHighscores };
+    const snapshot = {
+        timestamp: Date.now(),
+        dateString: new Date().toLocaleString(),
+        reason: reason,
+        data: JSON.stringify(snapshotData)
+    };
+
+    try {
+        db.collection("dbp_backups").add(snapshot);
+
+        if (navigator.onLine) {
+            db.collection("dbp_backups").orderBy("timestamp", "desc").get().then(docsSnap => {
+                if (docsSnap.size > 100) {
+                    db.collection("dbp_backups").orderBy("timestamp", "asc").limit(docsSnap.size - 100).get().then(oldSnap => {
+                        oldSnap.forEach(doc => doc.ref.delete());
+                    });
+                }
+            });
+        }
+    } catch(e) {
+        console.warn("Backup error", e);
     }
 }
 
@@ -547,33 +659,28 @@ function initRippleEngine() {
     document.addEventListener('mousedown', function(e) {
         const target = e.target.closest('.ripple-target');
         if (!target) return;
-        
         const circle = document.createElement('span');
         const diameter = Math.max(target.clientWidth, target.clientHeight) * 1.5;
         const radius = diameter / 2;
         const rect = target.getBoundingClientRect();
-        
         circle.style.width = circle.style.height = `${diameter}px`;
         circle.style.left = `${e.clientX - rect.left - radius}px`;
         circle.style.top = `${e.clientY - rect.top - radius}px`;
         circle.classList.add('ripple-effect');
-        
         const computed = window.getComputedStyle(target).position;
         if(computed !== 'relative' && computed !== 'absolute' && computed !== 'fixed') { target.style.position = 'relative'; }
-        
         target.appendChild(circle);
         setTimeout(() => circle.remove(), 800);
     });
 }
 
-// --- 2. AMBIENT PARALLAX (PERFORMANCE OPTIMIZED) ---
+// --- 2. AMBIENT PARALLAX ---
 let ticking = false;
 document.addEventListener('mousemove', (e) => {
     if (!ticking) {
         window.requestAnimationFrame(() => {
             const bgAnim = document.getElementById('bgAnim');
             if(bgAnim) {
-                // translate3d forces GPU hardware acceleration to stop laptop stutter
                 const x = (window.innerWidth / 2 - e.pageX) / 60; 
                 const y = (window.innerHeight / 2 - e.pageY) / 60;
                 bgAnim.style.transform = `translate3d(${x}px, ${y}px, 0)`;
@@ -593,21 +700,16 @@ function initTelemetry() {
             };
             updateBat(); bat.addEventListener('levelchange', updateBat); bat.addEventListener('chargingchange', updateBat);
         });
-    } else { 
-        const batEl = document.getElementById('batStatus');
-        if(batEl) batEl.style.display = 'none'; 
-    }
-    
+    } else { const batEl = document.getElementById('batStatus'); if(batEl) batEl.style.display = 'none'; }
     const updateNet = () => {
-        const el = document.getElementById('netStatus');
-        if(!el) return;
+        const el = document.getElementById('netStatus'); if(!el) return;
         if(navigator.onLine) { el.textContent = '📶 Online'; el.className = 'telemetry-item net-online'; }
         else { el.textContent = '❌ Offline'; el.className = 'telemetry-item net-offline'; }
     };
     window.addEventListener('online', updateNet); window.addEventListener('offline', updateNet); updateNet();
 }
 
-// --- 3. ADVANCED THEME INSPECTOR V2 (UPGRADED UI) ---
+// --- 3. THEME INSPECTOR V2 ---
 function initTheme() { 
     const saved = localStorage.getItem(KEYS.theme); 
     if(saved) document.documentElement.style.setProperty('--app-bg', saved); 
@@ -619,15 +721,12 @@ if(themeBtn) {
         showModal(`
             <h3 style="margin-bottom: 24px; text-align:center;">🎨 Appearance Inspector</h3>
             <div class="theme-inspector-v2">
-                
                 <div class="ti-preview-card" id="thPreview" style="background: var(--app-bg)">
                     <span class="ti-preview-text">Live Preview</span>
                 </div>
-                
                 <div class="ti-grid">
                     <div class="ti-section">
                         <h4 class="ti-heading">Custom Engine</h4>
-                        
                         <label class="ti-label">Background Style</label>
                         <select id="thType" class="ti-select" onchange="updateThemePreview()">
                             <option value="solid">Solid Color</option>
@@ -637,7 +736,6 @@ if(themeBtn) {
                             <option value="radial-gradient(circle at center, ">Radial Center</option>
                             <option value="radial-gradient(circle at top left, ">Radial Top-Left</option>
                         </select>
-
                         <label class="ti-label" style="margin-top: 8px;">Color Selection</label>
                         <div class="ti-color-pickers">
                             <div class="ti-picker-group">
@@ -650,7 +748,6 @@ if(themeBtn) {
                             </div>
                         </div>
                     </div>
-
                     <div class="ti-section">
                         <h4 class="ti-heading">Pro Presets</h4>
                         <div class="ti-presets-grid">
@@ -665,7 +762,6 @@ if(themeBtn) {
                         </div>
                     </div>
                 </div>
-                
             </div>
             <div class="modal-actions" style="margin-top: 32px;">
                 <button class="modal-btn secondary ripple-target" onclick="hideModal(); initTheme();">Discard Changes</button>
@@ -675,71 +771,42 @@ if(themeBtn) {
         updateThemePreview(true);
     });
 }
-
-function previewPreset(el) { 
-    document.getElementById('thPreview').style.background = el.style.background; 
-    document.documentElement.style.setProperty('--app-bg', el.style.background); 
-}
-
-function updateThemePreview(isInitialLoad = false) {
-    const type = document.getElementById('thType').value; 
-    const c1 = document.getElementById('thCol1').value; 
-    const c2 = document.getElementById('thCol2').value;
+window.previewPreset = function(el) { document.getElementById('thPreview').style.background = el.style.background; document.documentElement.style.setProperty('--app-bg', el.style.background); }
+window.updateThemePreview = function(isInitialLoad = false) {
+    const type = document.getElementById('thType').value; const c1 = document.getElementById('thCol1').value; const c2 = document.getElementById('thCol2').value;
     const col2Group = document.getElementById('thCol2Group');
-
-    if (type === 'solid') {
-        col2Group.classList.add('hidden');
-    } else {
-        col2Group.classList.remove('hidden');
-    }
-
+    if (type === 'solid') { col2Group.classList.add('hidden'); } else { col2Group.classList.remove('hidden'); }
     if (isInitialLoad) return; 
-
     const bgString = type === 'solid' ? c1 : `${type}${c1}, ${c2})`;
-    document.getElementById('thPreview').style.background = bgString;
-    document.documentElement.style.setProperty('--app-bg', bgString); 
+    document.getElementById('thPreview').style.background = bgString; document.documentElement.style.setProperty('--app-bg', bgString); 
 }
-
-function saveTheme() {
-    const bg = document.getElementById('thPreview').style.background; 
-    localStorage.setItem(KEYS.theme, bg); 
-    hideModal(); 
-    showToast('Theme Applied 🎨');
-}
+window.saveTheme = function() { const bg = document.getElementById('thPreview').style.background; localStorage.setItem(KEYS.theme, bg); hideModal(); showToast('Theme Applied 🎨'); triggerBackup('Theme Changed'); }
 
 // --- 4. ADVANCED CATEGORY MANAGEMENT & GRID ---
 function renderGrid() {
-    const container = document.getElementById('sectionsContainer'); 
-    if(!container) return;
-    container.innerHTML = '';
-    
+    const container = document.getElementById('sectionsContainer'); if(!container) return; container.innerHTML = '';
     Object.keys(links).forEach((section, index) => {
         if(links[section].length === 0) return; 
         const secDiv = document.createElement('div'); secDiv.className = 'section'; secDiv.id = `section-${section}`;
         secDiv.style.animationDelay = `${index * 0.15}s`; 
-        
         const titleText = section.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-        
         let html = `
             <div class="section-header">
                 <div class="section-title-wrap ripple-target" onclick="toggleSection('section-${section}')">
-                    <h2>📁 ${titleText}</h2>
-                    <span class="badge">${links[section].length} apps</span>
+                    <h2>📁 ${titleText}</h2><span class="badge">${links[section].length} apps</span>
                 </div>
                 <div class="section-controls">
-                    <button class="icon-action-btn ripple-target" onclick="moveCategory('${section}', 'up')" title="Move Up">↑</button>
-                    <button class="icon-action-btn ripple-target" onclick="moveCategory('${section}', 'down')" title="Move Down">↓</button>
-                    <button class="icon-action-btn accent ripple-target" onclick="openEditCategoryModal('${section}')" title="Edit Category">✏️</button>
-                    <button class="icon-action-btn ripple-target" onclick="toggleSection('section-${section}')" title="Toggle Section"><span class="toggle-icon">▼</span></button>
+                    <button class="icon-action-btn ripple-target" onclick="moveCategory('${section}', 'up')">↑</button>
+                    <button class="icon-action-btn ripple-target" onclick="moveCategory('${section}', 'down')">↓</button>
+                    <button class="icon-action-btn accent ripple-target" onclick="openEditCategoryModal('${section}')">✏️</button>
+                    <button class="icon-action-btn ripple-target" onclick="toggleSection('section-${section}')"><span class="toggle-icon">▼</span></button>
                 </div>
             </div>
             <div class="grid" id="grid-${section}" data-section="${section}">
         `;
-        
         links[section].forEach((link, idx) => { 
             html += `<a class="link-card ripple-target" href="${link.url}" target="_blank" data-id="${link.id}" data-section="${section}" draggable="true" style="animation-delay: ${idx * 0.05}s">
-                <div class="card-icon">${link.icon}</div>
-                <div class="label">${link.label}</div>
+                <div class="card-icon">${link.icon}</div><div class="label">${link.label}</div>
                 <div class="url">${new URL(link.url).hostname.replace('www.','')}</div>
                 <div class="tags">${link.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
             </a>`; 
@@ -748,79 +815,36 @@ function renderGrid() {
         attachDashboardDragListeners(document.getElementById(`grid-${section}`));
     });
 }
-
-function toggleSection(id) { document.getElementById(id).classList.toggle('collapsed'); }
-
-// Category Movers
+window.toggleSection = function(id) { document.getElementById(id).classList.toggle('collapsed'); }
 window.moveCategory = function(section, direction) {
-    const keys = Object.keys(links);
-    const idx = keys.indexOf(section);
+    const keys = Object.keys(links); const idx = keys.indexOf(section);
     if (direction === 'up' && idx > 0) { [keys[idx - 1], keys[idx]] = [keys[idx], keys[idx - 1]]; } 
     else if (direction === 'down' && idx < keys.length - 1) { [keys[idx], keys[idx + 1]] = [keys[idx + 1], keys[idx]]; } 
     else { return; }
-    
-    const newLinks = {};
-    keys.forEach(k => newLinks[k] = links[k]);
-    links = newLinks;
-    saveLinksAndRender(true);
+    const newLinks = {}; keys.forEach(k => newLinks[k] = links[k]); links = newLinks;
+    saveLinksAndRender(true); triggerBackup('Moved Category');
 }
-
-// Edit Category Modal
 window.openEditCategoryModal = function(oldName) {
-    showModal(`
-        <h3 style="margin-bottom:24px; text-align:center;">📁 Edit Category</h3>
-        <label style="font-size:14px; font-weight:700; color:var(--muted); margin-bottom:8px; display:block;">Category Name</label>
-        <input type="text" id="editCategoryName" class="modal-input" value="${oldName.replace(/_/g, ' ')}">
-        <div class="modal-actions">
-            <button class="modal-btn danger ripple-target" onclick="deleteCategory('${oldName}')">Delete Entire Category</button>
-            <button class="modal-btn secondary ripple-target" onclick="hideModal()">Cancel</button>
-            <button class="modal-btn primary ripple-target" onclick="saveCategoryName('${oldName}')">Save Name</button>
-        </div>
-    `);
+    showModal(`<h3 style="margin-bottom:24px; text-align:center;">📁 Edit Category</h3><label style="font-size:14px; font-weight:700; color:var(--muted); margin-bottom:8px; display:block;">Category Name</label><input type="text" id="editCategoryName" class="modal-input" value="${oldName.replace(/_/g, ' ')}"><div class="modal-actions"><button class="modal-btn danger ripple-target" onclick="deleteCategory('${oldName}')">Delete Entire Category</button><button class="modal-btn secondary ripple-target" onclick="hideModal()">Cancel</button><button class="modal-btn primary ripple-target" onclick="saveCategoryName('${oldName}')">Save Name</button></div>`);
 }
-
 window.saveCategoryName = function(oldName) {
-    const newNameRaw = document.getElementById('editCategoryName').value.trim();
-    if(!newNameRaw) return showToast("Name cannot be empty", true);
-    const newName = newNameRaw.toLowerCase().replace(/\s+/g, '_');
-    
+    const newNameRaw = document.getElementById('editCategoryName').value.trim(); if(!newNameRaw) return showToast("Name cannot be empty", true); const newName = newNameRaw.toLowerCase().replace(/\s+/g, '_');
     if (newName !== oldName) {
         if(links[newName]) return showToast("Category already exists", true);
-        const newLinks = {};
-        Object.keys(links).forEach(k => {
-            if(k === oldName) newLinks[newName] = links[oldName];
-            else newLinks[k] = links[k];
-        });
-        links = newLinks;
+        const newLinks = {}; Object.keys(links).forEach(k => { if(k === oldName) newLinks[newName] = links[oldName]; else newLinks[k] = links[k]; }); links = newLinks;
     }
-    saveLinksAndRender(true); hideModal(); showToast("Category Updated ✨");
+    saveLinksAndRender(true); hideModal(); showToast("Category Updated ✨"); triggerBackup('Renamed Category');
 }
-
-window.deleteCategory = function(name) {
-    if(confirm(`WARNING: Are you sure you want to completely delete the category "${name}" and all links inside it?`)) {
-        delete links[name]; saveLinksAndRender(true); hideModal(); showToast("Category Deleted 🗑️");
-    }
-}
+window.deleteCategory = function(name) { if(confirm(`WARNING: Are you sure you want to completely delete the category "${name}" and all links inside it?`)) { delete links[name]; saveLinksAndRender(true); hideModal(); showToast("Category Deleted 🗑️"); triggerBackup('Deleted Category'); } }
 
 function createBackup() { localStorage.setItem(KEYS.backup, localStorage.getItem(KEYS.links)); const ub = document.getElementById('undoBtn'); if(ub) ub.style.display = 'flex'; }
 function saveLinksAndRender(backup = true) { if(backup) createBackup(); localStorage.setItem(KEYS.links, JSON.stringify(links)); renderGrid(); renderHotbar(); }
-
 const undoBtn = document.getElementById('undoBtn');
-if(undoBtn) {
-    undoBtn.addEventListener('click', () => {
-        const backup = localStorage.getItem(KEYS.backup);
-        if(backup) { links = JSON.parse(backup); saveLinksAndRender(false); showToast('Restored previous state! ↩️'); undoBtn.style.display = 'none'; }
-    });
-}
+if(undoBtn) { undoBtn.addEventListener('click', () => { const backup = localStorage.getItem(KEYS.backup); if(backup) { links = JSON.parse(backup); saveLinksAndRender(false); showToast('Restored previous state! ↩️'); undoBtn.style.display = 'none'; triggerBackup('Used Local Undo');} }); }
 
 function attachDashboardDragListeners(grid) {
     if(!grid) return;
-    grid.addEventListener('dragover', (e) => {
-        e.preventDefault(); if(dragData.type === 'hotbar') return; 
-        grid.classList.add('drag-over');
-        const afterElement = getDragAfterElement(grid, e.clientX, e.clientY);
-        if (dragData.element) { if (afterElement == null) grid.appendChild(dragData.element); else grid.insertBefore(dragData.element, afterElement); }
-    });
+    grid.addEventListener('dragover', (e) => { e.preventDefault(); if(dragData.type === 'hotbar') return; grid.classList.add('drag-over'); const afterElement = getDragAfterElement(grid, e.clientX, e.clientY); if (dragData.element) { if (afterElement == null) grid.appendChild(dragData.element); else grid.insertBefore(dragData.element, afterElement); } });
     grid.addEventListener('dragleave', () => grid.classList.remove('drag-over'));
     grid.addEventListener('drop', (e) => { e.preventDefault(); grid.classList.remove('drag-over'); if(dragData.type === 'dashboard') recalculateLinksState(); });
 
@@ -828,374 +852,247 @@ function attachDashboardDragListeners(grid) {
         card.addEventListener('dragstart', () => { dragData = { type: 'dashboard', element: card, sourceSection: card.dataset.section, sourceId: card.dataset.id }; setTimeout(() => card.classList.add('dragging'), 0); });
         card.addEventListener('dragend', () => { card.classList.remove('dragging'); document.querySelectorAll('.grid').forEach(g => g.classList.remove('drag-over')); document.querySelectorAll('.hotbar-slot').forEach(s => s.classList.remove('drag-over')); dragData = { type: null }; });
         card.addEventListener('click', (e) => { if(card.classList.contains('dragging')) e.preventDefault(); });
-        card.addEventListener('contextmenu', (e) => {
-            e.preventDefault(); contextMenuTarget = { id: card.dataset.id, section: card.dataset.section, url: card.href };
-            const menu = document.getElementById('contextMenu'); if(menu) { menu.style.left = `${e.clientX}px`; menu.style.top = `${e.clientY}px`; menu.classList.add('active'); }
-        });
+        card.addEventListener('contextmenu', (e) => { e.preventDefault(); contextMenuTarget = { id: card.dataset.id, section: card.dataset.section, url: card.href }; const menu = document.getElementById('contextMenu'); if(menu) { menu.style.left = `${e.clientX}px`; menu.style.top = `${e.clientY}px`; menu.classList.add('active'); } });
     });
 }
-
 function getDragAfterElement(container, x, y) {
     const draggableElements = [...container.querySelectorAll('.link-card:not(.dragging)')];
-    return draggableElements.reduce((closest, child) => { 
-        const box = child.getBoundingClientRect(); const offsetX = x - box.left - box.width / 2; const offsetY = y - box.top - box.height / 2;
-        if (offsetY < box.height/2 && offsetY > -box.height/2 && offsetX < 0 && offsetX > closest.offsetX) { return { offsetX: offsetX, element: child }; } else { return closest; }
-    }, { offsetX: Number.NEGATIVE_INFINITY }).element;
+    return draggableElements.reduce((closest, child) => { const box = child.getBoundingClientRect(); const offsetX = x - box.left - box.width / 2; const offsetY = y - box.top - box.height / 2; if (offsetY < box.height/2 && offsetY > -box.height/2 && offsetX < 0 && offsetX > closest.offsetX) { return { offsetX: offsetX, element: child }; } else { return closest; } }, { offsetX: Number.NEGATIVE_INFINITY }).element;
 }
-
 function recalculateLinksState() {
-    createBackup();
-    Object.keys(links).forEach(section => {
-        const grid = document.getElementById(`grid-${section}`); if(!grid) return; const newOrder = [];
-        grid.querySelectorAll('.link-card').forEach(card => { 
-            let originalItem = null;
-            for(const sec of Object.keys(links)) { const found = links[sec].find(l => l.id === card.dataset.id); if(found) { originalItem = found; break; } }
-            if(originalItem) newOrder.push(originalItem); 
-        });
-        links[section] = newOrder;
-    }); saveLinksAndRender(false);
+    createBackup(); Object.keys(links).forEach(section => { const grid = document.getElementById(`grid-${section}`); if(!grid) return; const newOrder = []; grid.querySelectorAll('.link-card').forEach(card => { let originalItem = null; for(const sec of Object.keys(links)) { const found = links[sec].find(l => l.id === card.dataset.id); if(found) { originalItem = found; break; } } if(originalItem) newOrder.push(originalItem); }); links[section] = newOrder; }); saveLinksAndRender(false); triggerBackup('Reordered Dashboard Links');
 }
 
-// --- 5. HOTBAR ENGINE (MINECRAFT STYLE D&D) ---
+// --- 5. HOTBAR ENGINE ---
 function renderHotbar() {
-    const container = document.getElementById('hotbarContainer'); 
-    if(!container) return;
-    container.innerHTML = '';
+    const container = document.getElementById('hotbarContainer'); if(!container) return; container.innerHTML = '';
     for(let i=0; i<9; i++) {
-        const item = hotbar[i]; const div = document.createElement('button');
-        div.className = `hotbar-slot ripple-target ${item ? '' : 'empty'}`; div.dataset.index = i;
+        const item = hotbar[i]; const div = document.createElement('button'); div.className = `hotbar-slot ripple-target ${item ? '' : 'empty'}`; div.dataset.index = i;
         if (item) {
             div.draggable = true; div.innerHTML = `<span class="hotbar-num">${i+1}</span>${item.icon}`; div.title = `${item.label} (Press ${i+1})`;
             div.onclick = (e) => { if(!div.classList.contains('dragging')) window.open(item.url, '_blank'); };
             div.oncontextmenu = (e) => { e.preventDefault(); hotbarContextTarget = i; const menu = document.getElementById('hotbarContextMenu'); if(menu){ menu.style.left = `${e.clientX}px`; menu.style.top = `${e.clientY - 50}px`; menu.classList.add('active'); } };
             div.addEventListener('dragstart', () => { dragData = { type: 'hotbar', element: div, hotbarIndex: i }; setTimeout(() => div.classList.add('dragging'), 0); });
             div.addEventListener('dragend', () => { div.classList.remove('dragging'); document.querySelectorAll('.hotbar-slot').forEach(s => s.classList.remove('drag-over')); dragData = { type: null }; });
-        } else {
-            div.innerHTML = `<span class="hotbar-num">${i+1}</span>+`; div.title = `Empty Slot ${i+1}`; 
-            div.onclick = () => showToast("Right-click a link above to pin it here!");
-        }
-        
+        } else { div.innerHTML = `<span class="hotbar-num">${i+1}</span>+`; div.title = `Empty Slot ${i+1}`; div.onclick = () => showToast("Right-click a link above to pin it here!"); }
         div.addEventListener('dragover', (e) => { e.preventDefault(); div.classList.add('drag-over'); });
         div.addEventListener('dragleave', () => div.classList.remove('drag-over'));
-        div.addEventListener('drop', (e) => {
-            e.preventDefault(); div.classList.remove('drag-over'); const targetIdx = i;
-            if(dragData.type === 'dashboard') {
-                const link = links[dragData.sourceSection].find(l => l.id === dragData.sourceId);
-                if(link) { hotbar[targetIdx] = link; saveHotbar(); showToast(`Pinned to Slot ${targetIdx+1}`); }
-            } else if(dragData.type === 'hotbar') {
-                const sourceIdx = dragData.hotbarIndex; const temp = hotbar[targetIdx];
-                hotbar[targetIdx] = hotbar[sourceIdx]; hotbar[sourceIdx] = temp; saveHotbar();
-            }
-        });
-        container.appendChild(div);
+        div.addEventListener('drop', (e) => { e.preventDefault(); div.classList.remove('drag-over'); const targetIdx = i; if(dragData.type === 'dashboard') { const link = links[dragData.sourceSection].find(l => l.id === dragData.sourceId); if(link) { hotbar[targetIdx] = link; saveHotbar(); showToast(`Pinned to Slot ${targetIdx+1}`); triggerBackup('Pinned to Hotbar');} } else if(dragData.type === 'hotbar') { const sourceIdx = dragData.hotbarIndex; const temp = hotbar[targetIdx]; hotbar[targetIdx] = hotbar[sourceIdx]; hotbar[sourceIdx] = temp; saveHotbar(); triggerBackup('Reordered Hotbar'); } }); container.appendChild(div);
     }
 }
 function saveHotbar() { localStorage.setItem(KEYS.hotbar, JSON.stringify(hotbar)); renderHotbar(); }
+document.addEventListener('click', () => { const cm1 = document.getElementById('contextMenu'); if(cm1) cm1.classList.remove('active'); const cm2 = document.getElementById('hotbarContextMenu'); if(cm2) cm2.classList.remove('active'); });
 
-// Context Menu Actions
-document.addEventListener('click', () => { 
-    const cm1 = document.getElementById('contextMenu'); if(cm1) cm1.classList.remove('active'); 
-    const cm2 = document.getElementById('hotbarContextMenu'); if(cm2) cm2.classList.remove('active'); 
-});
+const ctxOpenNew = document.getElementById('ctxOpenNew'); if(ctxOpenNew) ctxOpenNew.addEventListener('click', () => { if(contextMenuTarget) window.open(contextMenuTarget.url, '_blank'); });
+const ctxCopy = document.getElementById('ctxCopy'); if(ctxCopy) ctxCopy.addEventListener('click', () => { if(contextMenuTarget) { navigator.clipboard.writeText(contextMenuTarget.url); showToast('URL Copied! 📋'); }});
+const ctxEdit = document.getElementById('ctxEdit'); if(ctxEdit) ctxEdit.addEventListener('click', () => { if(contextMenuTarget) openEditModal(contextMenuTarget.section, contextMenuTarget.id); });
+const ctxDelete = document.getElementById('ctxDelete'); if(ctxDelete) ctxDelete.addEventListener('click', () => { if(contextMenuTarget) { links[contextMenuTarget.section] = links[contextMenuTarget.section].filter(l => l.id !== contextMenuTarget.id); saveLinksAndRender(true); showToast('Link Deleted 🗑️'); triggerBackup('Deleted Link');} });
+const ctxPinHotbar = document.getElementById('ctxPinHotbar'); if(ctxPinHotbar) ctxPinHotbar.addEventListener('click', () => { if(contextMenuTarget) { const link = links[contextMenuTarget.section].find(l => l.id === contextMenuTarget.id); if(link) { const emptyIdx = hotbar.findIndex(s => s === null); if(emptyIdx !== -1) { hotbar[emptyIdx] = link; saveHotbar(); showToast(`Pinned ${link.label} to Slot ${emptyIdx+1} ⭐`); triggerBackup('Pinned to Hotbar');} else { showToast('Hotbar is full! Remove an item first.', true); } } } });
+const ctxRemoveHotbar = document.getElementById('ctxRemoveHotbar'); if(ctxRemoveHotbar) ctxRemoveHotbar.addEventListener('click', () => { if(hotbarContextTarget !== null) { hotbar[hotbarContextTarget] = null; saveHotbar(); showToast('Removed from Hotbar'); triggerBackup('Removed from Hotbar');} });
 
-const ctxOpenNew = document.getElementById('ctxOpenNew');
-if(ctxOpenNew) ctxOpenNew.addEventListener('click', () => { if(contextMenuTarget) window.open(contextMenuTarget.url, '_blank'); });
-
-const ctxCopy = document.getElementById('ctxCopy');
-if(ctxCopy) ctxCopy.addEventListener('click', () => { if(contextMenuTarget) { navigator.clipboard.writeText(contextMenuTarget.url); showToast('URL Copied! 📋'); }});
-
-const ctxEdit = document.getElementById('ctxEdit');
-if(ctxEdit) ctxEdit.addEventListener('click', () => { if(contextMenuTarget) openEditModal(contextMenuTarget.section, contextMenuTarget.id); });
-
-const ctxDelete = document.getElementById('ctxDelete');
-if(ctxDelete) ctxDelete.addEventListener('click', () => { if(contextMenuTarget) { links[contextMenuTarget.section] = links[contextMenuTarget.section].filter(l => l.id !== contextMenuTarget.id); saveLinksAndRender(true); showToast('Link Deleted 🗑️'); } });
-
-const ctxPinHotbar = document.getElementById('ctxPinHotbar');
-if(ctxPinHotbar) ctxPinHotbar.addEventListener('click', () => {
-    if(contextMenuTarget) {
-        const link = links[contextMenuTarget.section].find(l => l.id === contextMenuTarget.id);
-        if(link) {
-            const emptyIdx = hotbar.findIndex(s => s === null);
-            if(emptyIdx !== -1) { hotbar[emptyIdx] = link; saveHotbar(); showToast(`Pinned ${link.label} to Slot ${emptyIdx+1} ⭐`); } 
-            else { showToast('Hotbar is full! Remove an item first.', true); }
-        }
-    }
-});
-
-const ctxRemoveHotbar = document.getElementById('ctxRemoveHotbar');
-if(ctxRemoveHotbar) ctxRemoveHotbar.addEventListener('click', () => { if(hotbarContextTarget !== null) { hotbar[hotbarContextTarget] = null; saveHotbar(); showToast('Removed from Hotbar'); } });
-
-// --- 6. SEARCH ENGINE ---
+// --- 6. SEARCH ENGINE & WEB FALLBACK ---
 let searchSelectedIndex = -1; const searchBar = document.getElementById('searchBar'); const suggBox = document.getElementById('suggestions');
 if(searchBar && suggBox) {
     searchBar.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase().trim(); searchSelectedIndex = -1;
         if(!query) { suggBox.style.display = 'none'; return; }
         const matches = []; Object.values(links).forEach(sec => sec.forEach(l => { if(l.label.toLowerCase().includes(query) || l.url.toLowerCase().includes(query) || l.tags.some(t=>t.toLowerCase().includes(query))) matches.push(l); }));
-        if(matches.length > 0) {
-            suggBox.innerHTML = matches.slice(0, 8).map((l, i) => `<div class="suggestion-item ripple-target" data-index="${i}" onclick="window.open('${l.url}', '_blank'); document.getElementById('searchBar').value=''; document.getElementById('suggestions').style.display='none';"><div class="suggestion-icon">${l.icon}</div><div class="suggestion-details"><span class="suggestion-label">${l.label}</span><span class="suggestion-url">${l.url}</span></div></div>`).join('');
-            suggBox.style.display = 'block';
-        } else { suggBox.innerHTML = `<div class="suggestion-item" style="color:var(--muted); justify-content:center;">No links found</div>`; suggBox.style.display = 'block'; }
+        if(matches.length > 0) { suggBox.innerHTML = matches.slice(0, 8).map((l, i) => `<div class="suggestion-item ripple-target" data-index="${i}" onclick="window.open('${l.url}', '_blank'); document.getElementById('searchBar').value=''; document.getElementById('suggestions').style.display='none';"><div class="suggestion-icon">${l.icon}</div><div class="suggestion-details"><span class="suggestion-label">${l.label}</span><span class="suggestion-url">${l.url}</span></div></div>`).join(''); suggBox.style.display = 'block'; } else { suggBox.innerHTML = `<div class="suggestion-item" style="color:var(--muted); justify-content:center;">Press Enter to Search Web</div>`; suggBox.style.display = 'block'; }
     });
     searchBar.addEventListener('keydown', (e) => {
-        const items = suggBox.querySelectorAll('.suggestion-item'); if(items.length === 0) return;
-        if(e.key === 'ArrowDown') { e.preventDefault(); searchSelectedIndex = (searchSelectedIndex + 1) % items.length; updateSearchSelection(items); }
-        else if (e.key === 'ArrowUp') { e.preventDefault(); searchSelectedIndex = (searchSelectedIndex - 1 + items.length) % items.length; updateSearchSelection(items); }
-        else if (e.key === 'Enter' && searchSelectedIndex >= 0) items[searchSelectedIndex].click();
+        const items = suggBox.querySelectorAll('.suggestion-item'); 
+        if(e.key === 'ArrowDown' && items.length > 0) { e.preventDefault(); searchSelectedIndex = (searchSelectedIndex + 1) % items.length; updateSearchSelection(items); }
+        else if (e.key === 'ArrowUp' && items.length > 0) { e.preventDefault(); searchSelectedIndex = (searchSelectedIndex - 1 + items.length) % items.length; updateSearchSelection(items); }
+        else if (e.key === 'Enter') { if (searchSelectedIndex >= 0 && items.length > 0 && items[0].innerText !== 'Press Enter to Search Web') { items[searchSelectedIndex].click(); } else if (searchBar.value.trim()) { window.open('https://www.google.com/search?q=' + encodeURIComponent(searchBar.value.trim()), '_blank'); searchBar.value = ''; suggBox.style.display = 'none'; } }
     });
 }
 function updateSearchSelection(items) { items.forEach((item, i) => { if(i === searchSelectedIndex) item.classList.add('active'); else item.classList.remove('active'); }); }
 document.addEventListener('click', (e) => { const sc = document.querySelector('.search-container'); if(sc && !e.target.closest('.search-container')) { if(suggBox) suggBox.style.display = 'none'; } });
 
-// --- 7. ADVANCED APP-GRADE POMODORO ENGINE ---
+// --- 7. APP-GRADE POMODORO ENGINE ---
 let timerSettings = JSON.parse(localStorage.getItem(KEYS.timerSettings)) || { work: 25, short: 5, long: 15 };
-let currentTimerMode = 'work';
-let pomoCycle = 1; 
-let timerInterval = null; 
-let timerTotalSeconds = timerSettings.work * 60; 
-let timerSecondsLeft = timerTotalSeconds;
-let sessionsCompleted = parseInt(localStorage.getItem(KEYS.sessions)) || 0;
-let soundEnabled = true;
-
-const progressRing = document.getElementById('pomoProgress');
-const ringCircumference = 2 * Math.PI * 110; 
-if(progressRing) progressRing.style.strokeDasharray = ringCircumference;
-
+let currentTimerMode = 'work'; let pomoCycle = 1; let timerInterval = null; let timerTotalSeconds = timerSettings.work * 60; let timerSecondsLeft = timerTotalSeconds; let sessionsCompleted = parseInt(localStorage.getItem(KEYS.sessions)) || 0; let soundEnabled = true;
+const progressRing = document.getElementById('pomoProgress'); const ringCircumference = 2 * Math.PI * 110; if(progressRing) progressRing.style.strokeDasharray = ringCircumference;
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playChime() {
-    if(!soundEnabled) return;
-    try {
-        const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain();
-        osc.connect(gainNode); gainNode.connect(audioCtx.destination); osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 1.5);
-        gainNode.gain.setValueAtTime(0, audioCtx.currentTime); gainNode.gain.linearRampToValueAtTime(0.6, audioCtx.currentTime + 0.1); gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 2);
-        osc.start(); osc.stop(audioCtx.currentTime + 2);
-    } catch(e) {}
-}
+function playChime() { if(!soundEnabled) return; try { const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain(); osc.connect(gainNode); gainNode.connect(audioCtx.destination); osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 1.5); gainNode.gain.setValueAtTime(0, audioCtx.currentTime); gainNode.gain.linearRampToValueAtTime(0.6, audioCtx.currentTime + 0.1); gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 2); osc.start(); osc.stop(audioCtx.currentTime + 2); } catch(e) {} }
 
 function initTimer() { updateCycleUI(); updateTimerDisplay(); }
-
-function updateCycleUI() {
-    const ps = document.getElementById('pomoSessions');
-    if(ps) ps.textContent = sessionsCompleted;
-    const dots = document.querySelectorAll('.cycle-dot');
-    dots.forEach((dot, idx) => {
-        dot.className = 'cycle-dot'; 
-        if (idx + 1 < pomoCycle) dot.classList.add('completed');
-        else if (idx + 1 === pomoCycle) dot.classList.add('current');
-    });
-}
-
-function updateTimerDisplay() {
-    const m = Math.floor(timerSecondsLeft / 60).toString().padStart(2, '0'); const s = (timerSecondsLeft % 60).toString().padStart(2, '0');
-    const timeString = `${m}:${s}`; 
-    const pDisp = document.getElementById('pomoDisplay');
-    if(pDisp) pDisp.textContent = timeString;
-    
-    if(progressRing) {
-        const progressPercent = timerSecondsLeft / timerTotalSeconds;
-        progressRing.style.strokeDashoffset = ringCircumference - (progressPercent * ringCircumference);
-    }
-    
-    const ft = document.getElementById('focusTask');
-    if (timerInterval) document.title = `(${timeString}) ${ft ? ft.value || 'Focus' : 'Focus'} - DBP`; else document.title = ORIGINAL_TITLE;
-}
-
+function updateCycleUI() { const ps = document.getElementById('pomoSessions'); if(ps) ps.textContent = sessionsCompleted; const dots = document.querySelectorAll('.cycle-dot'); dots.forEach((dot, idx) => { dot.className = 'cycle-dot'; if (idx + 1 < pomoCycle) dot.classList.add('completed'); else if (idx + 1 === pomoCycle) dot.classList.add('current'); }); }
+function updateTimerDisplay() { const m = Math.floor(timerSecondsLeft / 60).toString().padStart(2, '0'); const s = (timerSecondsLeft % 60).toString().padStart(2, '0'); const timeString = `${m}:${s}`; const pDisp = document.getElementById('pomoDisplay'); if(pDisp) pDisp.textContent = timeString; if(progressRing) { const progressPercent = timerSecondsLeft / timerTotalSeconds; progressRing.style.strokeDashoffset = ringCircumference - (progressPercent * ringCircumference); } const ft = document.getElementById('focusTask'); if (timerInterval) document.title = `(${timeString}) ${ft ? ft.value || 'Focus' : 'Focus'} - DBP`; else document.title = ORIGINAL_TITLE; }
 const timerSettingsBtn = document.getElementById('timerSettingsBtn');
-if(timerSettingsBtn) {
-    timerSettingsBtn.addEventListener('click', () => {
-        showModal(`
-            <h3 style="margin-bottom:24px; text-align:center;">⚙️ Flow Settings</h3>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
-                <div style="text-align:center;">
-                    <label style="font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase;">Focus (m)</label>
-                    <input type="number" id="cfgWork" class="modal-input" value="${timerSettings.work}" min="1" max="120" style="text-align:center; margin-top:8px;">
-                </div>
-                <div style="text-align:center;">
-                    <label style="font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase;">Short (m)</label>
-                    <input type="number" id="cfgShort" class="modal-input" value="${timerSettings.short}" min="1" max="30" style="text-align:center; margin-top:8px;">
-                </div>
-                <div style="text-align:center;">
-                    <label style="font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase;">Long (m)</label>
-                    <input type="number" id="cfgLong" class="modal-input" value="${timerSettings.long}" min="1" max="60" style="text-align:center; margin-top:8px;">
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button class="modal-btn secondary ripple-target" onclick="hideModal()">Discard</button>
-                <button class="modal-btn primary ripple-target" onclick="saveTimerSettings()">Save Profile</button>
-            </div>
-        `);
-    });
-}
+if(timerSettingsBtn) { timerSettingsBtn.addEventListener('click', () => { showModal(`<h3 style="margin-bottom:24px; text-align:center;">⚙️ Flow Settings</h3><div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;"><div style="text-align:center;"><label style="font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase;">Focus (m)</label><input type="number" id="cfgWork" class="modal-input" value="${timerSettings.work}" min="1" max="120" style="text-align:center; margin-top:8px;"></div><div style="text-align:center;"><label style="font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase;">Short (m)</label><input type="number" id="cfgShort" class="modal-input" value="${timerSettings.short}" min="1" max="30" style="text-align:center; margin-top:8px;"></div><div style="text-align:center;"><label style="font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase;">Long (m)</label><input type="number" id="cfgLong" class="modal-input" value="${timerSettings.long}" min="1" max="60" style="text-align:center; margin-top:8px;"></div></div><div class="modal-actions"><button class="modal-btn secondary ripple-target" onclick="hideModal()">Discard</button><button class="modal-btn primary ripple-target" onclick="saveTimerSettings()">Save Profile</button></div>`); }); }
+window.saveTimerSettings = function() { timerSettings = { work: parseInt(document.getElementById('cfgWork').value)||25, short: parseInt(document.getElementById('cfgShort').value)||5, long: parseInt(document.getElementById('cfgLong').value)||15 }; localStorage.setItem(KEYS.timerSettings, JSON.stringify(timerSettings)); if(!timerInterval && currentTimerMode !== 'custom') { timerTotalSeconds = timerSettings[currentTimerMode] * 60; timerSecondsLeft = timerTotalSeconds; updateTimerDisplay(); } hideModal(); showToast('Timer Profile Saved'); triggerBackup('Updated Timer Settings'); }
+window.applyCustomTimer = function() { let mins = parseInt(document.getElementById('customTimerMins').value); if(!mins || mins < 1) mins = 25; timerTotalSeconds = mins * 60; timerSecondsLeft = timerTotalSeconds; updateTimerDisplay(); hideModal(); showToast(`Custom Phase set to ${mins}m ⏱️`); }
+function switchTimerMode(mode) { document.querySelectorAll('.pomo-mode-btn').forEach(b => b.classList.remove('active')); const targetBtn = document.querySelector(`.pomo-mode-btn[data-type="${mode}"]`); if(targetBtn) targetBtn.classList.add('active'); clearInterval(timerInterval); timerInterval = null; if(progressRing) progressRing.classList.remove('active'); const psStart = document.getElementById('pomoStart'); const psPause = document.getElementById('pomoPause'); const psSkip = document.getElementById('pomoSkip'); const psStat = document.getElementById('pomoStatus'); if(psStart) psStart.style.display = 'block'; if(psPause) psPause.style.display = 'none'; if(psSkip) psSkip.style.display = 'none'; currentTimerMode = mode; if (mode === 'work') { if(psStat) psStat.textContent = "Ready to Focus"; } else if (mode === 'short' || mode === 'long') { if(psStat) psStat.textContent = "Ready for a Break"; } if(mode === 'custom') { showModal(`<h3 style="margin-bottom:20px; text-align:center;">⏱️ Custom Phase</h3><label style="font-size:14px; font-weight:700; color:var(--muted); margin-bottom:8px; display:block; text-align:center;">Duration (Minutes)</label><input type="number" id="customTimerMins" class="modal-input" placeholder="e.g. 45" min="1" max="300" style="text-align:center;"><div class="modal-actions"><button class="modal-btn secondary ripple-target" onclick="hideModal()">Cancel</button><button class="modal-btn primary ripple-target" onclick="applyCustomTimer()">Initialize Phase</button></div>`); setTimeout(() => { const c = document.getElementById('customTimerMins'); if(c) c.focus(); }, 100); return; } timerTotalSeconds = timerSettings[currentTimerMode] * 60; timerSecondsLeft = timerTotalSeconds; updateTimerDisplay(); }
+document.querySelectorAll('.pomo-mode-btn').forEach(btn => { btn.addEventListener('click', (e) => switchTimerMode(e.target.dataset.type)); }); const pdClick = document.getElementById('pomoDisplayClick'); if(pdClick) pdClick.addEventListener('click', () => { if(timerInterval) return; const cb = document.querySelector('.pomo-mode-btn[data-type="custom"]'); if(cb) cb.click(); });
+function endPhase() { clearInterval(timerInterval); timerInterval = null; if(progressRing) progressRing.classList.remove('active'); playChime(); document.title = "Phase Complete - DBP"; if(currentTimerMode === 'work') { sessionsCompleted++; localStorage.setItem(KEYS.sessions, sessionsCompleted); if (pomoCycle % 4 === 0) { switchTimerMode('long'); showModal(`<h3 style="margin-bottom:16px; text-align:center;">🎉 Cycle Complete!</h3><p style="text-align:center; color:var(--muted);">You completed 4 focus sessions. Take a long break.</p><div class="modal-actions"><button class="modal-btn primary ripple-target" onclick="hideModal()">Start Long Break</button></div>`); pomoCycle = 1; } else { switchTimerMode('short'); showModal(`<h3 style="margin-bottom:16px; text-align:center;">⏱️ Phase Complete</h3><p style="text-align:center; color:var(--muted);">Great focus. Time for a short break.</p><div class="modal-actions"><button class="modal-btn primary ripple-target" onclick="hideModal()">Take Break</button></div>`); pomoCycle++; } } else { switchTimerMode('work'); showModal(`<h3 style="margin-bottom:16px; text-align:center;">🔋 Break Over</h3><p style="text-align:center; color:var(--muted);">Ready to drop back in?</p><div class="modal-actions"><button class="modal-btn primary ripple-target" onclick="hideModal()">Let's Go</button></div>`); } updateCycleUI(); }
+const pomoStart = document.getElementById('pomoStart'); if(pomoStart) { pomoStart.addEventListener('click', () => { if(timerInterval) return; if(audioCtx.state === 'suspended') audioCtx.resume(); const pStart = document.getElementById('pomoStart'); const pPause = document.getElementById('pomoPause'); const pSkip = document.getElementById('pomoSkip'); const pStat = document.getElementById('pomoStatus'); if(pStart) pStart.style.display = 'none'; if(pPause) pPause.style.display = 'block'; if(pSkip) pSkip.style.display = 'block'; if(progressRing) progressRing.classList.add('active'); const ft = document.getElementById('focusTask'); const task = ft ? (ft.value || (currentTimerMode === 'work' ? "Deep Work" : "Resting")) : "Active"; if(pStat) pStat.textContent = `Active: ${task}`; let lastTick = performance.now(); function tick() { const now = performance.now(); if(now - lastTick >= 1000) { timerSecondsLeft--; updateTimerDisplay(); lastTick = now; if(timerSecondsLeft <= 0) { endPhase(); return; } } timerInterval = requestAnimationFrame(tick); } timerInterval = requestAnimationFrame(tick); }); }
+const pomoPause = document.getElementById('pomoPause'); if(pomoPause) pomoPause.addEventListener('click', () => { cancelAnimationFrame(timerInterval); timerInterval = null; if(progressRing) progressRing.classList.remove('active'); const ps = document.getElementById('pomoStart'); const pp = document.getElementById('pomoPause'); const psk = document.getElementById('pomoSkip'); const pst = document.getElementById('pomoStatus'); if(ps) ps.style.display = 'block'; if(pp) pp.style.display = 'none'; if(psk) psk.style.display = 'none'; if(pst) pst.textContent = "Paused"; document.title = ORIGINAL_TITLE; });
+const pomoSkip = document.getElementById('pomoSkip'); if(pomoSkip) pomoSkip.addEventListener('click', () => { if(confirm("Skip this phase?")) endPhase(); });
+const pomoReset = document.getElementById('pomoReset'); if(pomoReset) pomoReset.addEventListener('click', () => { cancelAnimationFrame(timerInterval); timerInterval = null; if(progressRing) progressRing.classList.remove('active'); timerSecondsLeft = timerTotalSeconds; const ps = document.getElementById('pomoStart'); const pp = document.getElementById('pomoPause'); const psk = document.getElementById('pomoSkip'); const pst = document.getElementById('pomoStatus'); if(ps) ps.style.display = 'block'; if(pp) pp.style.display = 'none'; if(psk) psk.style.display = 'none'; if(pst) pst.textContent = "Ready"; updateTimerDisplay(); });
+const pomoVol = document.getElementById('pomoVol'); if(pomoVol) { pomoVol.addEventListener('click', (e) => { soundEnabled = !soundEnabled; const btn = e.currentTarget; if(soundEnabled) { btn.classList.remove('muted'); btn.textContent = '🔊'; } else { btn.classList.add('muted'); btn.textContent = '🔇'; } }); }
 
-window.saveTimerSettings = function() {
-    timerSettings = { work: parseInt(document.getElementById('cfgWork').value)||25, short: parseInt(document.getElementById('cfgShort').value)||5, long: parseInt(document.getElementById('cfgLong').value)||15 };
-    localStorage.setItem(KEYS.timerSettings, JSON.stringify(timerSettings));
-    if(!timerInterval && currentTimerMode !== 'custom') {
-        timerTotalSeconds = timerSettings[currentTimerMode] * 60; timerSecondsLeft = timerTotalSeconds; updateTimerDisplay();
-    }
-    hideModal(); showToast('Timer Profile Saved');
-}
+// --- 8. MULTI-TAB NOTES (WITH 30s DEBOUNCE BACKUP) ---
+const textNote = document.getElementById('notesTextarea'); let notesBackupTimer;
+function initNotes() { if(!textNote) return; if(typeof notesData === 'string') notesData = { main: notesData, work: '', ideas: '' }; textNote.value = notesData[currentNoteTab] || ''; updateNotesCounter(); }
+document.querySelectorAll('.note-tab').forEach(tab => { tab.addEventListener('click', (e) => { if(!textNote) return; notesData[currentNoteTab] = textNote.value; document.querySelectorAll('.note-tab').forEach(t => t.classList.remove('active')); e.target.classList.add('active'); currentNoteTab = e.target.dataset.tab; textNote.value = notesData[currentNoteTab] || ''; localStorage.setItem(KEYS.notes, JSON.stringify(notesData)); updateNotesCounter(); }); });
+if(textNote) { textNote.addEventListener('input', () => { notesData[currentNoteTab] = textNote.value; localStorage.setItem(KEYS.notes, JSON.stringify(notesData)); updateNotesCounter(); clearTimeout(notesBackupTimer); notesBackupTimer = setTimeout(() => { triggerBackup('Auto-saved Notes'); }, 30000); }); }
+function updateNotesCounter() { if(!textNote) return; const text = textNote.value; const words = text.trim() ? text.trim().split(/\s+/).length : 0; const nc = document.getElementById('notesCounter'); if(nc) nc.textContent = `${words} words • ${text.length} chars`; const ns = document.getElementById('notesStatus'); if(ns) { ns.textContent = "Saved Locally"; setTimeout(() => ns.textContent = "", 2000); } }
+const clearNotesBtn = document.getElementById('clearNotesBtn'); if(clearNotesBtn) clearNotesBtn.addEventListener('click', () => { if(confirm('Clear this tab?')) { if(textNote) textNote.value = ''; notesData[currentNoteTab] = ''; localStorage.setItem(KEYS.notes, JSON.stringify(notesData)); updateNotesCounter(); triggerBackup('Cleared Notes'); }});
+const copyNotesBtn = document.getElementById('copyNotesBtn'); if(copyNotesBtn) copyNotesBtn.addEventListener('click', () => { if(textNote) { navigator.clipboard.writeText(textNote.value); showToast('Notes copied! 📋'); } });
 
-window.applyCustomTimer = function() {
-    let mins = parseInt(document.getElementById('customTimerMins').value);
-    if(!mins || mins < 1) mins = 25;
-    timerTotalSeconds = mins * 60; timerSecondsLeft = timerTotalSeconds;
-    updateTimerDisplay(); hideModal(); showToast(`Custom Phase set to ${mins}m ⏱️`);
-}
 
-function switchTimerMode(mode) {
-    document.querySelectorAll('.pomo-mode-btn').forEach(b => b.classList.remove('active')); 
-    const targetBtn = document.querySelector(`.pomo-mode-btn[data-type="${mode}"]`);
-    if(targetBtn) targetBtn.classList.add('active');
-    
-    clearInterval(timerInterval); timerInterval = null; 
-    if(progressRing) progressRing.classList.remove('active');
-    
-    const psStart = document.getElementById('pomoStart');
-    const psPause = document.getElementById('pomoPause');
-    const psSkip = document.getElementById('pomoSkip');
-    const psStat = document.getElementById('pomoStatus');
-    
-    if(psStart) psStart.style.display = 'block'; 
-    if(psPause) psPause.style.display = 'none'; 
-    if(psSkip) psSkip.style.display = 'none';
-    
-    currentTimerMode = mode;
-    if (mode === 'work') { if(psStat) psStat.textContent = "Ready to Focus"; }
-    else if (mode === 'short' || mode === 'long') { if(psStat) psStat.textContent = "Ready for a Break"; }
-    
-    if(mode === 'custom') {
-        showModal(`<h3 style="margin-bottom:20px; text-align:center;">⏱️ Custom Phase</h3><label style="font-size:14px; font-weight:700; color:var(--muted); margin-bottom:8px; display:block; text-align:center;">Duration (Minutes)</label><input type="number" id="customTimerMins" class="modal-input" placeholder="e.g. 45" min="1" max="300" style="text-align:center;"><div class="modal-actions"><button class="modal-btn secondary ripple-target" onclick="hideModal()">Cancel</button><button class="modal-btn primary ripple-target" onclick="applyCustomTimer()">Initialize Phase</button></div>`);
-        setTimeout(() => { const c = document.getElementById('customTimerMins'); if(c) c.focus(); }, 100);
-        return;
-    }
-    timerTotalSeconds = timerSettings[currentTimerMode] * 60; timerSecondsLeft = timerTotalSeconds; updateTimerDisplay();
-}
+// --- 9. TYPING DOJO SYSTEM (PERFECTED DUAL MODE + HIGH SCORES) ---
+const dojoBtn = document.getElementById('dojoBtn');
+const dojoOverlay = document.getElementById('typingDojoOverlay');
+const dojoTextRender = document.getElementById('dojoTextRender');
+const dojoHiddenInput = document.getElementById('dojoHiddenInput');
+const dojoWpm = document.getElementById('dojoWpm');
+const dojoAcc = document.getElementById('dojoAcc');
+const dojoHighscoreDisp = document.getElementById('dojoHighscore');
 
-document.querySelectorAll('.pomo-mode-btn').forEach(btn => { btn.addEventListener('click', (e) => switchTimerMode(e.target.dataset.type)); });
-const pdClick = document.getElementById('pomoDisplayClick');
-if(pdClick) pdClick.addEventListener('click', () => { if(timerInterval) return; const cb = document.querySelector('.pomo-mode-btn[data-type="custom"]'); if(cb) cb.click(); });
+const dojoCodeSnippets = [
+    "int ledPin = 13;\nvoid setup() {\n  pinMode(ledPin, OUTPUT);\n}\nvoid loop() {\n  digitalWrite(ledPin, HIGH);\n  delay(1000);\n}",
+    "document.getElementById('robot').style.transform = 'translateY(-10px)';",
+    "void WiFiEvent(WiFiEvent_t event) { Serial.printf(\"[WiFi-event] event: %d\\n\", event); }",
+    "const db = firebase.firestore(); await db.collection(\"backups\").add(snapshot);",
+    "std::vector<int> nums = {1, 2, 3, 4, 5}; for(int n : nums) { std::cout << n; }"
+];
 
-function endPhase() {
-    clearInterval(timerInterval); timerInterval = null; 
-    if(progressRing) progressRing.classList.remove('active');
-    playChime(); document.title = "Phase Complete - DBP";
-    
-    if(currentTimerMode === 'work') {
-        sessionsCompleted++; localStorage.setItem(KEYS.sessions, sessionsCompleted); 
-        if (pomoCycle % 4 === 0) {
-            switchTimerMode('long'); showModal(`<h3 style="margin-bottom:16px; text-align:center;">🎉 Cycle Complete!</h3><p style="text-align:center; color:var(--muted);">You completed 4 focus sessions. Take a long break.</p><div class="modal-actions"><button class="modal-btn primary ripple-target" onclick="hideModal()">Start Long Break</button></div>`);
-            pomoCycle = 1;
-        } else {
-            switchTimerMode('short'); showModal(`<h3 style="margin-bottom:16px; text-align:center;">⏱️ Phase Complete</h3><p style="text-align:center; color:var(--muted);">Great focus. Time for a short break.</p><div class="modal-actions"><button class="modal-btn primary ripple-target" onclick="hideModal()">Take Break</button></div>`);
-            pomoCycle++;
+const dojoProseSnippets = [
+    "Arise, awake, and stop not till the goal is reached.",
+    "The secret of life is not enjoyment, but education through experience.",
+    "Prompt engineering is the art of communicating intent to a neural network in a concise manner.",
+    "Deep work is the ability to focus without distraction on a cognitively demanding task.",
+    "In a world of constant distraction, the ability to concentrate deeply is a superpower."
+];
+
+let dojoCurrentMode = 'code'; 
+let dojoCurrentText = "";
+let dojoTypedArray = [];
+let dojoStartTime = null;
+let dojoIsActive = false;
+
+if(dojoBtn) dojoBtn.addEventListener('click', openDojo);
+
+if(dojoOverlay) {
+    dojoOverlay.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'BUTTON' && dojoIsActive) {
+            dojoHiddenInput.focus();
         }
-    } else {
-        switchTimerMode('work'); showModal(`<h3 style="margin-bottom:16px; text-align:center;">🔋 Break Over</h3><p style="text-align:center; color:var(--muted);">Ready to drop back in?</p><div class="modal-actions"><button class="modal-btn primary ripple-target" onclick="hideModal()">Let's Go</button></div>`);
-    }
-    updateCycleUI();
-}
-
-const pomoStart = document.getElementById('pomoStart');
-if(pomoStart) {
-    pomoStart.addEventListener('click', () => {
-        if(timerInterval) return; 
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-        
-        const pStart = document.getElementById('pomoStart');
-        const pPause = document.getElementById('pomoPause');
-        const pSkip = document.getElementById('pomoSkip');
-        const pStat = document.getElementById('pomoStatus');
-        
-        if(pStart) pStart.style.display = 'none'; 
-        if(pPause) pPause.style.display = 'block'; 
-        if(pSkip) pSkip.style.display = 'block';
-        if(progressRing) progressRing.classList.add('active'); 
-        
-        const ft = document.getElementById('focusTask');
-        const task = ft ? (ft.value || (currentTimerMode === 'work' ? "Deep Work" : "Resting")) : "Active"; 
-        if(pStat) pStat.textContent = `Active: ${task}`;
-        
-        let lastTick = performance.now();
-        function tick() {
-            const now = performance.now();
-            if(now - lastTick >= 1000) {
-                timerSecondsLeft--; updateTimerDisplay(); lastTick = now;
-                if(timerSecondsLeft <= 0) { endPhase(); return; }
-            }
-            timerInterval = requestAnimationFrame(tick);
-        }
-        timerInterval = requestAnimationFrame(tick);
     });
 }
 
-const pomoPause = document.getElementById('pomoPause');
-if(pomoPause) pomoPause.addEventListener('click', () => { cancelAnimationFrame(timerInterval); timerInterval = null; if(progressRing) progressRing.classList.remove('active'); const ps = document.getElementById('pomoStart'); const pp = document.getElementById('pomoPause'); const psk = document.getElementById('pomoSkip'); const pst = document.getElementById('pomoStatus'); if(ps) ps.style.display = 'block'; if(pp) pp.style.display = 'none'; if(psk) psk.style.display = 'none'; if(pst) pst.textContent = "Paused"; document.title = ORIGINAL_TITLE; });
-
-const pomoSkip = document.getElementById('pomoSkip');
-if(pomoSkip) pomoSkip.addEventListener('click', () => { if(confirm("Skip this phase?")) endPhase(); });
-
-const pomoReset = document.getElementById('pomoReset');
-if(pomoReset) pomoReset.addEventListener('click', () => { cancelAnimationFrame(timerInterval); timerInterval = null; if(progressRing) progressRing.classList.remove('active'); timerSecondsLeft = timerTotalSeconds; const ps = document.getElementById('pomoStart'); const pp = document.getElementById('pomoPause'); const psk = document.getElementById('pomoSkip'); const pst = document.getElementById('pomoStatus'); if(ps) ps.style.display = 'block'; if(pp) pp.style.display = 'none'; if(psk) psk.style.display = 'none'; if(pst) pst.textContent = "Ready"; updateTimerDisplay(); });
-
-const pomoVol = document.getElementById('pomoVol');
-if(pomoVol) {
-    pomoVol.addEventListener('click', (e) => {
-        soundEnabled = !soundEnabled; const btn = e.currentTarget;
-        if(soundEnabled) { btn.classList.remove('muted'); btn.textContent = '🔊'; } else { btn.classList.add('muted'); btn.textContent = '🔇'; }
-    });
+function openDojo() {
+    dojoOverlay.classList.add('active');
+    dojoIsActive = true;
+    resetDojo();
+    setTimeout(() => dojoHiddenInput.focus(), 100);
 }
 
-// --- 8. MULTI-TAB NOTES ---
-const textNote = document.getElementById('notesTextarea');
-function initNotes() { 
-    if(!textNote) return;
-    if(typeof notesData === 'string') notesData = { main: notesData, work: '', ideas: '' }; 
-    textNote.value = notesData[currentNoteTab] || ''; updateNotesCounter(); 
+window.closeDojo = function() {
+    dojoOverlay.classList.remove('active');
+    dojoIsActive = false;
+    dojoHiddenInput.blur();
 }
-document.querySelectorAll('.note-tab').forEach(tab => {
-    tab.addEventListener('click', (e) => {
-        if(!textNote) return;
-        notesData[currentNoteTab] = textNote.value; document.querySelectorAll('.note-tab').forEach(t => t.classList.remove('active')); e.target.classList.add('active');
-        currentNoteTab = e.target.dataset.tab; textNote.value = notesData[currentNoteTab] || ''; localStorage.setItem(KEYS.notes, JSON.stringify(notesData)); updateNotesCounter();
+
+document.querySelectorAll('.dojo-mode-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.dojo-mode-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        dojoCurrentMode = e.target.dataset.mode;
+        resetDojo();
+        dojoHiddenInput.focus();
     });
 });
-if(textNote) textNote.addEventListener('input', () => { notesData[currentNoteTab] = textNote.value; localStorage.setItem(KEYS.notes, JSON.stringify(notesData)); updateNotesCounter(); });
 
-function updateNotesCounter() {
-    if(!textNote) return;
-    const text = textNote.value; const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-    const nc = document.getElementById('notesCounter'); if(nc) nc.textContent = `${words} words • ${text.length} chars`;
-    const ns = document.getElementById('notesStatus'); if(ns) { ns.textContent = "Auto-saved."; setTimeout(() => ns.textContent = "", 2000); }
+window.resetDojo = function() {
+    const arr = dojoCurrentMode === 'code' ? dojoCodeSnippets : dojoProseSnippets;
+    dojoCurrentText = arr[Math.floor(Math.random() * arr.length)];
+    dojoTypedArray = [];
+    dojoStartTime = null;
+    dojoWpm.textContent = "0";
+    dojoAcc.textContent = "100%";
+    dojoHighscoreDisp.textContent = dojoHighscores[dojoCurrentMode] || 0;
+    dojoHiddenInput.value = "";
+    renderDojoText();
 }
 
-const clearNotesBtn = document.getElementById('clearNotesBtn');
-if(clearNotesBtn) clearNotesBtn.addEventListener('click', () => { if(confirm('Clear this tab?')) { if(textNote) textNote.value = ''; notesData[currentNoteTab] = ''; localStorage.setItem(KEYS.notes, JSON.stringify(notesData)); updateNotesCounter(); }});
+function renderDojoText() {
+    dojoTextRender.innerHTML = "";
+    let html = "";
+    for(let i=0; i < dojoCurrentText.length; i++) {
+        let char = dojoCurrentText[i];
+        let displayChar = char === '\n' ? '↵<br>' : char;
+        let stateClass = "";
+        
+        if (i < dojoTypedArray.length) {
+            stateClass = dojoTypedArray[i] === char ? "correct" : "incorrect";
+        } else if (i === dojoTypedArray.length) {
+            stateClass = "active-char";
+        }
+        
+        html += `<span class="dojo-char ${stateClass}">${displayChar}</span>`;
+    }
+    dojoTextRender.innerHTML = html;
+}
 
-const copyNotesBtn = document.getElementById('copyNotesBtn');
-if(copyNotesBtn) copyNotesBtn.addEventListener('click', () => { if(textNote) { navigator.clipboard.writeText(textNote.value); showToast('Notes copied! 📋'); } });
+if(dojoHiddenInput) {
+    dojoHiddenInput.addEventListener('input', (e) => {
+        if(!dojoIsActive) return;
+        if(dojoStartTime === null) dojoStartTime = new Date();
+        
+        const typed = dojoHiddenInput.value;
+        dojoTypedArray = typed.split('');
+        
+        let correctCount = 0;
+        for(let i=0; i < dojoTypedArray.length; i++) {
+            if(dojoTypedArray[i] === dojoCurrentText[i]) correctCount++;
+        }
+        let acc = typed.length > 0 ? Math.round((correctCount / typed.length) * 100) : 100;
+        dojoAcc.textContent = `${acc}%`;
+        
+        let timeElapsed = (new Date() - dojoStartTime) / 60000; 
+        if (timeElapsed < 0.02) timeElapsed = 0.02; // Clamp to prevent Infinity WPM crash
+        
+        const words = correctCount / 5; 
+        const wpm = correctCount > 0 ? Math.round(words / timeElapsed) : 0;
+        dojoWpm.textContent = wpm;
+        
+        renderDojoText();
+        
+        if(dojoTypedArray.length >= dojoCurrentText.length) {
+            dojoHiddenInput.blur();
+            let msg = `Dojo Cleared! ${wpm} WPM at ${acc}% Accuracy 🥋`;
+            
+            if (wpm > (dojoHighscores[dojoCurrentMode] || 0)) {
+                dojoHighscores[dojoCurrentMode] = wpm;
+                localStorage.setItem(KEYS.highscores, JSON.stringify(dojoHighscores));
+                dojoHighscoreDisp.textContent = wpm;
+                msg = `🏆 NEW HIGH SCORE! ${wpm} WPM!`;
+                triggerBackup(`New Dojo Highscore: ${wpm} WPM`); // Trigger unified Firebase backup
+            }
+            
+            showToast(msg);
+        }
+    });
+}
 
-// --- 9. UTILS, MODALS & GLOBAL SHORTCUTS ---
+
+// --- 10. UTILS, MODALS & GLOBAL SHORTCUTS ---
 function updateClock() { 
     try {
         const now = new Date(); 
         const timeStr = now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12: true});
         const dateStr = now.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
-        
-        const ct = document.getElementById('clockTime');
-        const cd = document.getElementById('clockDate');
-        
-        if(ct) ct.textContent = timeStr;
-        if(cd) cd.textContent = dateStr;
-    } catch(e) {
-        console.error("Clock update error:", e);
-    }
+        const ct = document.getElementById('clockTime'); const cd = document.getElementById('clockDate');
+        if(ct) ct.textContent = timeStr; if(cd) cd.textContent = dateStr;
+    } catch(e) {}
 }
 
-function showToast(msg, isError=false) { const t = document.getElementById('toast'); if(!t) return; const tm = document.getElementById('toastMessage'); if(tm) tm.textContent = msg; t.style.borderColor = isError ? 'var(--danger)' : 'var(--border-highlight)'; t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 3000); }
-function showModal(content) { const m = document.getElementById('modal'); const mo = document.getElementById('modalOverlay'); if(m && mo) { m.innerHTML = content; mo.classList.add('active'); } }
-function hideModal() { const mo = document.getElementById('modalOverlay'); if(mo) mo.classList.remove('active'); }
+window.showToast = function(msg, isError=false) { const t = document.getElementById('toast'); if(!t) return; const tm = document.getElementById('toastMessage'); if(tm) tm.textContent = msg; t.style.borderColor = isError ? 'var(--danger)' : 'var(--border-highlight)'; t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 3000); }
+window.showModal = function(content) { const m = document.getElementById('modal'); const mo = document.getElementById('modalOverlay'); if(m && mo) { m.innerHTML = content; mo.classList.add('active'); } }
+window.hideModal = function() { const mo = document.getElementById('modalOverlay'); if(mo) mo.classList.remove('active'); }
 const modalOverlay = document.getElementById('modalOverlay');
 if(modalOverlay) modalOverlay.addEventListener('click', (e) => { if(e.target.id === 'modalOverlay') hideModal(); });
 
@@ -1203,6 +1100,14 @@ document.addEventListener('keydown', (e) => {
     const activeTag = document.activeElement.tagName;
     const inInput = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
     
+    // Typing Dojo Intercept
+    if (typeof dojoIsActive !== 'undefined' && dojoIsActive) {
+        if (e.key === 'Escape') { e.preventDefault(); closeDojo(); }
+        if (e.key === 'Tab') { e.preventDefault(); resetDojo(); }
+        return; 
+    }
+    
+    if(e.altKey && e.key === 't') { e.preventDefault(); if(typeof openDojo === 'function') openDojo(); }
     if(e.ctrlKey && e.key === 'k') { e.preventDefault(); const sb = document.getElementById('searchBar'); if(sb) sb.focus(); }
     if(e.altKey && e.key === 'n') { e.preventDefault(); const na = document.getElementById('notesAnchor'); if(na) na.scrollIntoView({behavior:'smooth'}); setTimeout(()=> { if(textNote) textNote.focus(); }, 500); }
     if(e.key === 'Escape') { hideModal(); document.activeElement.blur(); const sg = document.getElementById('suggestions'); if(sg) sg.style.display='none'; }
@@ -1221,43 +1126,32 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-const shortcutsBtn = document.getElementById('shortcutsBtn');
-if(shortcutsBtn) shortcutsBtn.addEventListener('click', () => {
-    showModal(`<h3 style="text-align:center; margin-bottom: 24px;">⌨️ Command Shortcuts</h3><table style="width:100%; text-align:left; border-collapse:collapse; font-size:16px;">
-        <tr style="border-bottom:1px solid var(--border);"><td style="padding:16px 0;"><span style="background:var(--card-hover); padding:8px 12px; border-radius:8px; color:var(--accent); font-family:'JetBrains Mono', monospace; font-weight: 800;">Ctrl + K</span></td><td style="font-weight:600;">Global Search</td></tr>
-        <tr style="border-bottom:1px solid var(--border);"><td style="padding:16px 0;"><span style="background:var(--card-hover); padding:8px 12px; border-radius:8px; color:var(--accent); font-family:'JetBrains Mono', monospace; font-weight: 800;">Alt + N</span></td><td style="font-weight:600;">Quick Scratchpad</td></tr>
-        <tr style="border-bottom:1px solid var(--border);"><td style="padding:16px 0;"><span style="background:var(--card-hover); padding:8px 12px; border-radius:8px; color:var(--accent); font-family:'JetBrains Mono', monospace; font-weight: 800;">1 - 9</span></td><td style="font-weight:600;">Launch Hotbar Slot</td></tr>
-        <tr><td style="padding:16px 0;"><span style="background:var(--card-hover); padding:8px 12px; border-radius:8px; color:var(--accent); font-family:'JetBrains Mono', monospace; font-weight: 800;">Drag & Drop</span></td><td style="font-weight:600;">Reorganize / Pin to Hotbar</td></tr>
-    </table><div class="modal-actions"><button class="modal-btn primary ripple-target" onclick="hideModal()">Understood</button></div>`);
-});
+// System Lock / Auth
+window.lockSystem = function() {
+    localStorage.removeItem('dbp_unlocked');
+    document.documentElement.classList.remove('system-unlocked');
+    const ps = document.getElementById('passwordScreen');
+    if(ps) { document.getElementById('passwordInput').value = ''; }
+}
 
-// Auth
+const lockBtn = document.getElementById('lockBtn');
+if(lockBtn) lockBtn.addEventListener('click', lockSystem);
+
 const unlockBtn = document.getElementById('unlockBtn');
 if(unlockBtn) unlockBtn.addEventListener('click', () => { 
     const pi = document.getElementById('passwordInput');
     if(pi && pi.value === DEFAULT_PASS) { 
         localStorage.setItem(KEYS.unlock, 'true'); 
-        const ps = document.getElementById('passwordScreen');
-        if(ps) {
-            ps.style.opacity = '0'; 
-            setTimeout(() => ps.style.display = 'none', 400); 
-        }
-    } else { alert("Access Denied"); } 
-});
-
-const previewBtn = document.getElementById('previewBtn');
-if(previewBtn) previewBtn.addEventListener('click', () => { 
-    const ps = document.getElementById('passwordScreen');
-    if(ps) {
-        ps.style.opacity = '0'; 
-        setTimeout(() => ps.style.display = 'none', 400); 
-    }
+        document.documentElement.classList.add('system-unlocked');
+    } else { 
+        pi.style.animation = 'none'; setTimeout(() => pi.style.animation = 'shake 0.5s', 10); showToast("Access Denied", true); 
+    } 
 });
 
 const pi = document.getElementById('passwordInput');
 if(pi) pi.addEventListener('keypress', (e) => { if(e.key === 'Enter') { const ub = document.getElementById('unlockBtn'); if(ub) ub.click(); } });
 
-// --- 10. CONFIG MANAGEMENT & MIGRATION IMPORT ---
+// --- 11. CONFIG MANAGEMENT & MIGRATION IMPORT ---
 const addLinkBtn = document.getElementById('addLinkBtn');
 if(addLinkBtn) addLinkBtn.addEventListener('click', () => {
     const opts = Object.keys(links).map(s => `<option value="${s}">${s.replace('_', ' ').toUpperCase()}</option>`).join('');
@@ -1271,6 +1165,7 @@ window.processAddLink = function() {
     if(!label || !url) return showToast('Name and URL required!', true); if(!url.startsWith('http')) url = 'https://' + url;
     if(section === '_new') { section = document.getElementById('inpNewSection').value.trim().toLowerCase().replace(/\s+/g, '_'); if(!section) return showToast('Category required', true); if(!links[section]) links[section] = []; }
     links[section].push({ id: `link_${Date.now()}`, label, url, icon, tags }); saveLinksAndRender(true); hideModal(); showToast('Link added! ✨');
+    triggerBackup('Added new link');
 }
 
 window.openEditModal = function(sec, id) {
@@ -1283,11 +1178,12 @@ window.processEditLink = function(oldSec, id) {
     const linkIndex = links[oldSec].findIndex(l => l.id === id); const updated = { id, label, url, icon, tags };
     if(oldSec === newSec) links[oldSec][linkIndex] = updated; else { links[oldSec].splice(linkIndex, 1); links[newSec].push(updated); }
     saveLinksAndRender(true); hideModal(); showToast('Link updated! ✏️');
+    triggerBackup('Edited Link');
 }
 
 const exportBtn = document.getElementById('exportBtn');
 if(exportBtn) exportBtn.addEventListener('click', () => {
-    const data = JSON.stringify({ version: 8, links, notesData, sessions: sessionsCompleted, hotbar, theme: localStorage.getItem(KEYS.theme), timerSettings });
+    const data = JSON.stringify({ version: 10, links, notesData, sessions: sessionsCompleted, hotbar, theme: localStorage.getItem(KEYS.theme), timerSettings, highscores: dojoHighscores });
     const blob = new Blob([data], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `dbp_system_backup_${new Date().toISOString().slice(0,10)}.json`; a.click(); showToast('Config Exported 📤');
 });
 
@@ -1300,11 +1196,14 @@ if(importBtn) importBtn.addEventListener('click', () => {
             <input type="file" id="importFileInput" accept=".json" style="display:none;">
             <button class="action-btn ripple-target" onclick="document.getElementById('importFileInput').click()" style="width:100%; background: var(--card-hover); border: 1px dashed var(--accent);">📁 Browse for JSON File</button>
         </div>
-        <textarea class="modal-input" id="importArea" style="min-height:180px; font-family:monospace; font-size:12px;" placeholder="Or paste JSON code here..."></textarea>
+        <textarea class="modal-input" id="importArea" style="min-height:140px; font-family:monospace; font-size:12px;" placeholder="Or paste JSON code here..."></textarea>
         <div class="modal-actions">
             <button class="modal-btn secondary ripple-target" onclick="hideModal()">Cancel</button>
             <button class="modal-btn primary ripple-target" onclick="processImport()">Import Data</button>
         </div>
+        <hr style="border-color:var(--border); margin: 24px 0;">
+        <h4 style="text-align:center; margin-bottom:16px;">System Recovery</h4>
+        <button class="action-btn primary ripple-target" onclick="openBackupsList()" style="width:100%; background: rgba(99, 102, 241, 0.1); border-color: var(--accent); color: white;">☁️ Browse Live Backups</button>
     `);
     const ifi = document.getElementById('importFileInput');
     if(ifi) ifi.addEventListener('change', function(e) {
@@ -1325,9 +1224,125 @@ window.processImport = function() {
         if(data.timerSettings) { timerSettings = data.timerSettings; localStorage.setItem(KEYS.timerSettings, JSON.stringify(timerSettings)); }
         if(data.sessions !== undefined) { sessionsCompleted = data.sessions; localStorage.setItem(KEYS.sessions, sessionsCompleted); } 
         if(data.theme) { localStorage.setItem(KEYS.theme, data.theme); initTheme(); }
+        if(data.highscores) { dojoHighscores = data.highscores; localStorage.setItem(KEYS.highscores, JSON.stringify(dojoHighscores)); }
         localStorage.setItem(KEYS.notes, JSON.stringify(notesData));
         saveLinksAndRender(true); initNotes(); initTimer(); hideModal(); showToast('System Updated Successfully! 📥'); 
+        triggerBackup('Manual JSON Import');
     } catch(e) { alert("Invalid JSON configuration string."); }
+}
+
+// --- CLOUD BACKUP BROWSER (LIVE SYNC VERSION) ---
+window.tempBackups = {};
+let liveBackupListener = null; 
+
+window.openBackupsList = function() {
+    showModal(`
+        <h3 style="text-align:center; margin-bottom:24px;">☁️ Live Cloud Backups</h3>
+        <div id="liveBackupContainer" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right:8px;">
+            <p style="text-align:center; color:var(--muted);">Connecting to server...</p>
+        </div>
+        <div class="modal-actions" style="margin-top:24px;">
+            <button class="modal-btn secondary ripple-target" onclick="closeBackupsModal()">Close</button>
+        </div>
+    `);
+
+    const container = document.getElementById('liveBackupContainer');
+
+    try {
+        if (liveBackupListener) liveBackupListener();
+
+        liveBackupListener = db.collection("dbp_backups").orderBy("timestamp", "desc").limit(100)
+            .onSnapshot({ includeMetadataChanges: true }, (querySnapshot) => {
+                let html = '';
+                
+                let offline = JSON.parse(localStorage.getItem('dbp_offline_backups') || '[]');
+                offline.slice().reverse().forEach((b, i) => {
+                     html += createBackupRow(b, 'offline_' + i, true);
+                });
+
+                if(querySnapshot.empty && offline.length === 0) {
+                    html += `<p style="text-align:center; color:var(--muted);">No backups found yet.</p>`;
+                } else {
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        const isPending = doc.metadata.hasPendingWrites;
+                        html += createBackupRow(data, doc.id, isPending);
+                    });
+                }
+
+                if(container) container.innerHTML = html;
+            }, (error) => {
+                console.error("Live backup listener error:", error);
+                if(container) container.innerHTML = `<p style="text-align:center; color:var(--danger);">Error connecting to Firebase. Check your Security Rules.</p>`;
+            });
+
+    } catch(e) {
+        if(container) container.innerHTML = `<p style="text-align:center; color:var(--danger);">System error loading backups.</p>`;
+    }
+}
+
+window.closeBackupsModal = function() {
+    if (liveBackupListener) {
+        liveBackupListener(); 
+        liveBackupListener = null;
+    }
+    hideModal();
+}
+
+window.createBackupRow = function(data, id, isPending) {
+    window.tempBackups[id] = data;
+    
+    // Live UI Feedback
+    const statusTag = isPending 
+        ? `<span style="color:var(--warning); font-size:11px; margin-left:8px; animation: blinkCursor 1s infinite;">(Pending Sync...)</span>` 
+        : `<span style="color:var(--success); font-size:11px; margin-left:8px;">(Synced ✓)</span>`;
+    
+    return `<div style="background:var(--card); border:1px solid var(--border); padding:16px; border-radius:12px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <div style="font-weight:bold; font-size:15px;">${data.dateString} ${statusTag}</div>
+            <div style="font-size:13px; color:var(--muted); font-family:'JetBrains Mono', monospace;">Trigger: ${data.reason}</div>
+        </div>
+        <button class="action-btn ripple-target" style="padding: 10px 20px;" onclick="reviewBackup('${id}')">Review</button>
+    </div>`;
+}
+
+window.reviewBackup = function(id) {
+    const b = window.tempBackups[id];
+    const parsed = JSON.parse(b.data);
+    const totalLinks = Object.values(parsed.links || {}).reduce((acc, curr) => acc + curr.length, 0);
+    const codeScore = parsed.highscores ? parsed.highscores.code : 0;
+    const proseScore = parsed.highscores ? parsed.highscores.prose : 0;
+
+    showModal(`
+        <h3 style="text-align:center; margin-bottom:16px;">🔎 Review Backup</h3>
+        <div style="background:rgba(0,0,0,0.2); padding:20px; border-radius:16px; font-size:15px; margin-bottom:24px; border:1px solid var(--border-highlight);">
+            <p style="margin-bottom:8px;"><strong>Date:</strong> <span style="color:var(--accent);">${b.dateString}</span></p>
+            <p style="margin-bottom:8px;"><strong>Trigger:</strong> ${b.reason}</p>
+            <p style="margin-bottom:8px;"><strong>Total Links Saved:</strong> ${totalLinks}</p>
+            <p style="margin-bottom:8px;"><strong>Notes Length:</strong> ${(parsed.notesData?.main || '').length} chars (Main Tab)</p>
+            <p style="margin-bottom:8px;"><strong>Dojo Scores:</strong> Code: ${codeScore} WPM | Prose: ${proseScore} WPM</p>
+            <p><strong>Hotbar Items:</strong> ${parsed.hotbar.filter(h => h !== null).length}/9 Slots Filled</p>
+        </div>
+        <div class="modal-actions">
+            <button class="modal-btn secondary ripple-target" onclick="openBackupsList()">Back</button>
+            <button class="modal-btn primary ripple-target" onclick="applyBackup('${id}')">Restore This Backup</button>
+        </div>
+    `);
+}
+
+window.applyBackup = function(id) {
+    const parsed = JSON.parse(window.tempBackups[id].data);
+    links = parsed.links || links;
+    notesData = parsed.notesData || notesData;
+    hotbar = parsed.hotbar || hotbar;
+    if(parsed.highscores) { dojoHighscores = parsed.highscores; localStorage.setItem(KEYS.highscores, JSON.stringify(dojoHighscores)); }
+    if(parsed.theme) { localStorage.setItem(KEYS.theme, parsed.theme); initTheme(); }
+    localStorage.setItem(KEYS.notes, JSON.stringify(notesData));
+    saveLinksAndRender(false);
+    initNotes();
+    renderHotbar();
+    hideModal();
+    showToast('System reverted successfully! ↩️');
 }
 
 // Boot System
